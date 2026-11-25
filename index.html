@@ -3,46 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Editor etichete QR</title>
+<title>Printare etichete</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Archivo+Narrow:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-/* VOICE: practic, de depozit — clar, fără decor, butoane mari pentru deget pe iPad
-   IDEA: rola de etichete termice: eticheta albă stă pe o bandă gri ca pe suportul siliconat
-   PICTURE: previzualizarea etichetei la scară, mare, sus — exact cum iese din imprimantă
-   COLOUR and TYPE: alb, negru de tuș, un singur accent albastru-cobalt; Archivo
-   LAYOUT: stânga previzualizare + export, dreapta câmpuri; dedesubt lista de produse; sub 760px totul pe o coloană */
-:root{color-scheme:light dark;--bg:light-dark(#f4f4f2,#121314);--card:light-dark(#fff,#1d1f21);--ink:light-dark(#151515,#ececea);--mut:light-dark(#66666a,#9a9ca0);--line:light-dark(#dcdcd8,#33363a);--acc:light-dark(#1f4fd6,#7c9dff);--accInk:light-dark(#fff,#0b1640);--roll:light-dark(#d9d9d4,#2a2c2f)}
+/* VOICE: practic, de depozit — clar, butoane mari pentru deget pe iPad
+   IDEA: rola de etichete termice: eticheta albă stă pe banda gri a suportului
+   PICTURE: previzualizarea etichetei la scară, mare — exact cum iese din imprimantă
+   COLOUR and TYPE: alb, negru de tuș, un accent albastru-cobalt; Archivo
+   LAYOUT: bară de imprimantă sus; ecran de alegere; apoi previzualizare + câmpuri; sub 760px o coloană */
+:root{color-scheme:light dark;--bg:light-dark(#f4f4f2,#121314);--card:light-dark(#fff,#1d1f21);--ink:light-dark(#151515,#ececea);--mut:light-dark(#66666a,#9a9ca0);--line:light-dark(#dcdcd8,#33363a);--acc:light-dark(#1f4fd6,#7c9dff);--accInk:light-dark(#fff,#0b1640);--roll:light-dark(#d9d9d4,#2a2c2f);--ok:light-dark(#0b7a3b,#5fd08f)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Archivo,system-ui,sans-serif;overflow-x:clip}
-h1{font-size:clamp(26px,4vw,36px);line-height:1.05;margin:0;font-weight:800;text-wrap:balance}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.05;margin:0 0 6px;font-weight:800;text-wrap:balance}
 h2{font-size:18px;margin:0 0 12px;font-weight:800}
-.band{padding:clamp(18px,3vw,36px) max(4vw,14px)}
-.wrap{max-width:1240px;margin:0 auto}
-.top{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between;margin-bottom:18px}
-.top p{margin:0;color:var(--mut);font-size:14px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 max(4vw,14px)}
+.bar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding-block:10px}
+.brand{font-weight:800;font-size:18px;margin-right:auto;text-decoration:none;color:var(--ink)}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav a{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:600;font-size:15px}
+nav a[aria-current=page]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.btbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mut);flex:none}
+.dot.on{background:var(--ok)}
+#btState{font-size:14px;color:var(--mut);max-width:420px}
+.prset{border-top:1px solid var(--line)}
+.prset summary{font-size:14px}
+main{padding:clamp(16px,3vw,32px) 0 48px}
 .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
-.stage{position:sticky;top:12px}
+.stage{position:sticky;top:76px}
 .roll{background:var(--roll);border-radius:10px;padding:clamp(18px,4vw,40px) 12px;display:flex;justify-content:center;align-items:center;min-height:260px}
-.roll canvas{max-width:100%;max-height:52vh;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.18);image-rendering:pixelated}
+.roll canvas{max-width:100%;max-height:52vh;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.18)}
 .meta{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;font-size:14px;color:var(--mut);margin:10px 2px 14px}
 .meta b{color:var(--ink);white-space:nowrap}
+.warn{color:#c0392b;font-size:14px;margin:0 0 10px}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
-button{font:600 15px Archivo,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
-button.pri{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
+button,.filebtn{font:600 15px Archivo,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+button.pri,.filebtn{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
 button.sm{min-height:36px;padding:0 10px;font-size:14px}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-.bt{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .hint{font-size:13px;color:var(--mut);margin:10px 0 0}
-.lp{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
-.lp img{display:block;max-width:180px;border:1px solid var(--line);border-radius:4px;margin-top:6px;background:#fff}
+.sub{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
 label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin-bottom:4px}
 input,select,textarea{width:100%;font:16px Archivo,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 11px;min-height:44px}
+input[type=range]{padding:0;accent-color:var(--acc)}
 textarea{min-height:110px;font-size:15px}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:12px}
 .f{margin-bottom:12px}
@@ -61,10 +73,24 @@ table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;font-size:13px;color:var(--mut);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
 td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 tr.sel td{background:light-dark(#eaf0ff,#1e2a4a)}
-tr{cursor:pointer}
+tbody tr{cursor:pointer}
 td.n,th.n{text-align:right;white-space:nowrap}
 td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px;margin-top:18px}
+.choice{display:flex;flex-direction:column;gap:12px;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;min-height:260px}
+.choice:hover{border-color:var(--acc)}
+.choice .art{flex:1;background:var(--roll);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:18px;min-height:140px}
+.choice .art svg{width:min(100%,220px);height:auto;filter:drop-shadow(0 6px 14px rgba(0,0,0,.18))}
+.choice b{font-size:21px;line-height:1.15}
+.choice span{color:var(--mut);font-size:15px}
+.lead{color:var(--mut);margin:0;max-width:62ch}
+.pages{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;max-height:150px;overflow:auto}
+.pages button{min-width:44px;min-height:38px;padding:0 10px;font-size:14px}
+.pages button[aria-pressed=true]{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
+.pages button.cur{outline:2px solid var(--ink);outline-offset:1px}
+.empty{color:var(--mut);text-align:center;font-size:15px;padding:20px}
+[hidden]{display:none!important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;z-index:9}
 .toast.on{opacity:1}
 @media(prefers-reduced-motion:reduce){.toast{transition:none}}
 @media(max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.stage{position:static}}
@@ -73,120 +99,227 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 </head>
 <body>
-<div class="band"><div class="wrap">
-  <div class="top">
-    <h1>Etichete QR pentru stoc</h1>
-    <p>Modifici textul și mărimea, apoi trimiți imaginea sau PDF-ul în aplicația imprimantei.</p>
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#">Printare etichete</a>
+    <nav aria-label="Ce printezi">
+      <a href="#qr" data-v="qr">QR</a><a href="#barcode" data-v="barcode">Cod de bare</a><a href="#pdf" data-v="pdf">PDF</a>
+    </nav>
+    <div class="btbox"><span class="dot" id="dot"></span><span id="btState">Imprimantă neconectată</span><button class="pri sm" id="bConn">Conectează imprimanta</button></div>
   </div>
-
-  <div class="grid">
-    <section class="card stage" aria-label="Previzualizare">
-      <div class="roll"><canvas id="cv" aria-label="Previzualizare etichetă"></canvas></div>
-      <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Copii total: <b id="mTot"></b></span></div>
-      <div class="btns" id="dlBtns">
-        <button class="pri" id="bPng">PNG eticheta curentă</button>
-        <button id="bPdf1">PDF eticheta curentă</button>
-        <button id="bPdfAll">PDF toate (cu copii)</button>
+  <div class="wrap prset">
+    <details style="border:0;margin:0;padding:0 0 6px"><summary>Setări imprimantă</summary>
+      <div class="row" style="margin-top:6px">
+        <div><label for="gap">Spațiu între etichete (mm)</label><input id="gap" type="number" inputmode="decimal" min="0" max="10" step="0.5"></div>
+        <div><label for="dens">Intensitate</label><select id="dens"><option>6</option><option>8</option><option>10</option><option>12</option><option>15</option></select></div>
+        <div><label for="inv">Dacă iese negativ</label><select id="inv"><option value="0">Normal</option><option value="1">Inversează</option></select></div>
+        <div><label for="rot">Orientare la print</label><select id="rot"><option value="0">Normal</option><option value="1">Rotește 90°</option></select></div>
       </div>
-      <div class="bt" id="bt">
-        <div class="btns"><button class="pri" id="bConn">Conectează imprimanta</button><button id="bPrint1" disabled>Printează eticheta</button><button id="bPrintAll" disabled>Printează toate</button></div>
-        <p class="hint" id="btState">Print direct: deschide pagina în browserul <b>Bluefy</b> pe iPad (Safari nu permite Bluetooth).</p>
-        <div class="row" style="margin:8px 0 0">
-          <div><label for="gap">Spațiu între etichete (mm)</label><input id="gap" type="number" inputmode="decimal" min="0" max="10" step="0.5"></div>
-          <div><label for="dens">Intensitate</label><select id="dens"><option>6</option><option>8</option><option>10</option><option>12</option><option>15</option></select></div>
-          <div><label for="inv">Dacă iese negativ</label><select id="inv"><option value="0">Normal</option><option value="1">Inversează</option></select></div>
-        </div>
-      </div>
-      <p class="hint" id="dlHint">Pe iPad se deschide meniul de partajare — alege aplicația imprimantei sau „Salvează în Fișiere / Poze”.</p>
-      <div class="lp">
-        <span class="hint" style="margin:0">Alternativă: ține apăsat pe imagine → Salvează în Poze, apoi o deschizi din aplicația imprimantei.</span>
-        <img id="lpImg" alt="Eticheta ca imagine">
-      </div>
-    </section>
-
-    <section class="card" aria-label="Setări">
-      <h2>Mărimea etichetei</h2>
-      <div class="chips" id="presets"></div>
-      <div class="row">
-        <div><label for="w">Lățime (mm)</label><input id="w" type="number" inputmode="decimal" min="10" max="150" step="1"></div>
-        <div><label for="h">Înălțime (mm)</label><input id="h" type="number" inputmode="decimal" min="10" max="150" step="1"></div>
-        <div><label for="dpi">Rezoluție</label><select id="dpi"><option value="203">203 dpi</option><option value="300">300 dpi</option></select></div>
-      </div>
-
-      <h2>Produs</h2>
-      <div class="f"><label for="name">Denumire</label><input id="name" autocomplete="off"></div>
-      <div class="row">
-        <div><label for="code">Cod / SKU</label><input id="code" autocomplete="off"></div>
-        <div><label for="price">Preț</label><input id="price" inputmode="decimal" autocomplete="off"></div>
-      </div>
-      <div class="f"><label for="extra">Rând suplimentar (lot, termen, raft…)</label><input id="extra" autocomplete="off"></div>
-      <div class="f"><label for="qr">Conținut QR (gol = se folosește codul)</label><input id="qr" autocomplete="off" placeholder="ex. link spre produs sau cod"></div>
-
-      <h2>Aspect</h2>
-      <div class="chips" id="layouts"></div>
-      <div class="checks">
-        <label><input type="checkbox" id="sName">Denumire</label>
-        <label><input type="checkbox" id="sCode">Cod</label>
-        <label><input type="checkbox" id="sPrice">Preț</label>
-        <label><input type="checkbox" id="sExtra">Rând suplimentar</label>
-        <label><input type="checkbox" id="sBorder">Chenar</label>
-        <label><input type="checkbox" id="sRot">Rotește 90° la export</label>
-      </div>
-      <div class="row">
-        <div><label for="scale">Mărime text: <span id="scaleV"></span></label><input id="scale" type="range" min="0.6" max="1.6" step="0.05" style="padding:0"></div>
-        <div><label for="font">Font</label><select id="font"><option value="Archivo">Archivo</option><option value="Archivo Narrow">Archivo Narrow (îngust)</option><option value="Arial">Arial</option></select></div>
-        <div><label for="cur">Monedă</label><input id="cur" autocomplete="off"></div>
-      </div>
-      <details>
-        <summary>Importă o listă (lipește din Excel)</summary>
-        <p class="hint">Un produs pe rând: <b>Denumire; Cod; Preț; QR; Copii</b>. Merge și cu coloane copiate direct din Excel (Tab).</p>
-        <textarea id="imp" placeholder="Mănuși nitril M; MD-NIT-M; 95&#10;Compozit A2 4g; CT-NH-A2; 320"></textarea>
-        <div class="btns" style="margin-top:8px"><button id="bImpAdd">Adaugă în listă</button><button id="bImpRep">Înlocuiește lista</button></div>
-      </details>
-    </section>
+    </details>
   </div>
+</header>
 
-  <section class="card list" aria-label="Produse">
-    <div class="lhead">
-      <h2>Produse (<span id="cnt"></span>)</h2>
-      <div class="btns"><button class="sm" id="bAdd">+ Produs nou</button><button class="sm" id="bDup">Duplică</button><button class="sm" id="bDel">Șterge</button></div>
+<main class="wrap">
+  <!-- ACASĂ -->
+  <section id="v-home">
+    <h1>Ce vrei să printezi?</h1>
+    <p class="lead">Alegi tipul, potrivești eticheta și o trimiți direct la imprimantă prin Bluetooth (în Bluefy).</p>
+    <div class="home">
+      <a class="choice" href="#qr"><div class="art"><svg viewBox="0 0 220 130" aria-hidden="true"><rect width="220" height="130" rx="8" fill="#fff"/><g fill="#111"><rect x="14" y="14" width="102" height="102" fill="none" stroke="#111" stroke-width="0"/><rect x="16" y="16" width="30" height="30"/><rect x="22" y="22" width="18" height="18" fill="#fff"/><rect x="26" y="26" width="10" height="10"/><rect x="84" y="16" width="30" height="30"/><rect x="90" y="22" width="18" height="18" fill="#fff"/><rect x="94" y="26" width="10" height="10"/><rect x="16" y="84" width="30" height="30"/><rect x="22" y="90" width="18" height="18" fill="#fff"/><rect x="26" y="94" width="10" height="10"/><rect x="54" y="18" width="8" height="8"/><rect x="66" y="26" width="8" height="8"/><rect x="54" y="42" width="16" height="8"/><rect x="18" y="56" width="8" height="8"/><rect x="34" y="62" width="16" height="8"/><rect x="58" y="58" width="12" height="12"/><rect x="78" y="56" width="8" height="16"/><rect x="94" y="62" width="18" height="8"/><rect x="58" y="84" width="8" height="8"/><rect x="74" y="92" width="16" height="8"/><rect x="96" y="84" width="8" height="18"/><rect x="58" y="104" width="10" height="10"/><rect x="82" y="106" width="12" height="8"/></g><rect x="128" y="22" width="78" height="12" rx="2" fill="#111"/><rect x="128" y="42" width="58" height="8" rx="2" fill="#777"/><rect x="128" y="86" width="64" height="20" rx="2" fill="#111"/></svg></div><b>Etichete cu QR</b><span>Denumire, cod, preț și QR pentru produsele din stoc.</span></a>
+      <a class="choice" href="#barcode"><div class="art"><svg viewBox="0 0 220 130" aria-hidden="true"><rect width="220" height="130" rx="8" fill="#fff"/><rect x="20" y="16" width="120" height="12" rx="2" fill="#111"/><rect x="20" y="34" width="70" height="8" rx="2" fill="#777"/><g fill="#111"><rect x="20" y="52" width="4" height="50"/><rect x="27" y="52" width="2" height="50"/><rect x="32" y="52" width="6" height="50"/><rect x="41" y="52" width="2" height="50"/><rect x="46" y="52" width="4" height="50"/><rect x="54" y="52" width="2" height="50"/><rect x="59" y="52" width="6" height="50"/><rect x="68" y="52" width="2" height="50"/><rect x="73" y="52" width="4" height="50"/><rect x="80" y="52" width="2" height="50"/><rect x="86" y="52" width="6" height="50"/><rect x="95" y="52" width="2" height="50"/><rect x="100" y="52" width="4" height="50"/><rect x="108" y="52" width="2" height="50"/><rect x="113" y="52" width="6" height="50"/><rect x="122" y="52" width="2" height="50"/><rect x="127" y="52" width="4" height="50"/><rect x="135" y="52" width="2" height="50"/><rect x="140" y="52" width="6" height="50"/><rect x="150" y="52" width="2" height="50"/><rect x="155" y="52" width="4" height="50"/><rect x="163" y="52" width="2" height="50"/><rect x="168" y="52" width="6" height="50"/><rect x="178" y="52" width="2" height="50"/><rect x="183" y="52" width="4" height="50"/><rect x="190" y="52" width="6" height="50"/></g><rect x="70" y="108" width="80" height="8" rx="2" fill="#111"/></svg></div><b>Etichete cu cod de bare</b><span>Code 128, EAN-13, EAN-8 sau Code 39, cu cifrele dedesubt.</span></a>
+      <a class="choice" href="#pdf"><div class="art"><svg viewBox="0 0 220 130" aria-hidden="true"><rect x="62" y="6" width="96" height="118" rx="6" fill="#fff"/><rect x="74" y="18" width="50" height="10" rx="2" fill="#111"/><rect x="74" y="34" width="72" height="6" rx="2" fill="#888"/><rect x="74" y="44" width="64" height="6" rx="2" fill="#888"/><rect x="74" y="58" width="72" height="30" rx="2" fill="none" stroke="#111" stroke-width="3"/><g fill="#111"><rect x="78" y="96" width="3" height="20"/><rect x="84" y="96" width="2" height="20"/><rect x="89" y="96" width="4" height="20"/><rect x="96" y="96" width="2" height="20"/><rect x="101" y="96" width="3" height="20"/><rect x="107" y="96" width="5" height="20"/><rect x="115" y="96" width="2" height="20"/><rect x="120" y="96" width="3" height="20"/><rect x="126" y="96" width="2" height="20"/><rect x="131" y="96" width="4" height="20"/><rect x="138" y="96" width="2" height="20"/></g></svg></div><b>Printează un PDF</b><span>AWB-uri, facturi sau etichete gata făcute — rotești, decupezi și potrivești pe etichetă.</span></a>
     </div>
-    <table class="stack"><thead><tr><th>Denumire</th><th>Cod</th><th class="n">Preț</th><th class="n">Copii</th></tr></thead><tbody id="tb"></tbody></table>
-    <p class="hint" id="sampleNote">Produsele de mai sus sunt exemple — înlocuiește-le cu ale tale. Totul se salvează automat pe acest dispozitiv.</p>
+    <p class="hint">Print direct merge în browserul Bluefy. În Safari poți salva PNG/PDF și printa din aplicația Marklife.</p>
   </section>
-</div></div>
+
+  <!-- QR / COD DE BARE -->
+  <section id="v-label" hidden>
+    <div class="grid">
+      <section class="card stage" aria-label="Previzualizare">
+        <div class="roll"><canvas id="cv" aria-label="Previzualizare etichetă"></canvas></div>
+        <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Copii total: <b id="mTot"></b></span></div>
+        <p class="warn" id="lWarn" hidden></p>
+        <div class="btns">
+          <button class="pri" id="bPrint1" disabled>Printează eticheta</button>
+          <button class="pri" id="bPrintAll" disabled>Printează toate</button>
+        </div>
+        <div class="btns sub dl">
+          <button id="bPng">PNG eticheta curentă</button>
+          <button id="bPdf1">PDF eticheta curentă</button>
+          <button id="bPdfAll">PDF toate (cu copii)</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Setări">
+        <h2>Mărimea etichetei</h2>
+        <div class="sizebox"></div>
+
+        <h2>Produs</h2>
+        <div class="f"><label for="name">Denumire</label><input id="name" autocomplete="off"></div>
+        <div class="row">
+          <div><label for="code">Cod / SKU</label><input id="code" autocomplete="off"></div>
+          <div><label for="price">Preț</label><input id="price" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <div class="f"><label for="extra">Rând suplimentar (lot, termen, raft…)</label><input id="extra" autocomplete="off"></div>
+        <div class="f"><label for="qr" id="qrLbl">Conținut QR (gol = se folosește codul)</label><input id="qr" autocomplete="off" placeholder="ex. link spre produs sau cod"></div>
+
+        <h2>Aspect</h2>
+        <div class="f" id="bcFmtBox"><label for="bcFmt">Tip cod de bare</label>
+          <select id="bcFmt"><option value="CODE128">Code 128 (litere și cifre)</option><option value="EAN13">EAN-13 (12–13 cifre)</option><option value="EAN8">EAN-8 (7–8 cifre)</option><option value="CODE39">Code 39 (majuscule și cifre)</option></select></div>
+        <div class="chips" id="layouts"></div>
+        <div class="checks">
+          <label><input type="checkbox" id="sName">Denumire</label>
+          <label><input type="checkbox" id="sCode">Cod</label>
+          <label><input type="checkbox" id="sPrice">Preț</label>
+          <label><input type="checkbox" id="sExtra">Rând suplimentar</label>
+          <label><input type="checkbox" id="sBorder">Chenar</label>
+        </div>
+        <div class="row">
+          <div><label for="scale">Mărime text: <span id="scaleV"></span></label><input id="scale" type="range" min="0.6" max="1.6" step="0.05"></div>
+          <div><label for="font">Font</label><select id="font"><option value="Archivo">Archivo</option><option value="Archivo Narrow">Archivo Narrow (îngust)</option><option value="Arial">Arial</option></select></div>
+          <div><label for="cur">Monedă</label><input id="cur" autocomplete="off"></div>
+        </div>
+        <details>
+          <summary>Importă o listă (lipește din Excel)</summary>
+          <p class="hint">Un produs pe rând: <b>Denumire; Cod; Preț; QR/cod de bare; Copii</b>. Merge și cu coloane copiate direct din Excel.</p>
+          <textarea id="imp" placeholder="Mănuși nitril M; MD-NIT-M; 95&#10;Compozit A2 4g; CT-NH-A2; 320"></textarea>
+          <div class="btns" style="margin-top:8px"><button id="bImpAdd">Adaugă în listă</button><button id="bImpRep">Înlocuiește lista</button></div>
+        </details>
+      </section>
+    </div>
+
+    <section class="card list" aria-label="Produse">
+      <div class="lhead">
+        <h2>Produse (<span id="cnt"></span>)</h2>
+        <div class="btns"><button class="sm" id="bAdd">+ Produs nou</button><button class="sm" id="bDup">Duplică</button><button class="sm" id="bDel">Șterge</button></div>
+      </div>
+      <table class="stack"><thead><tr><th>Denumire</th><th>Cod</th><th class="n">Preț</th><th class="n">Copii</th></tr></thead><tbody id="tb"></tbody></table>
+      <p class="hint" id="sampleNote">Produsele de mai sus sunt exemple — înlocuiește-le cu ale tale. Totul se salvează automat pe acest dispozitiv.</p>
+    </section>
+  </section>
+
+  <!-- PDF -->
+  <section id="v-pdf" hidden>
+    <div class="grid">
+      <section class="card stage" aria-label="Previzualizare PDF">
+        <div class="roll"><canvas id="pcv" aria-label="Previzualizare pagină pe etichetă" hidden></canvas><p class="empty" id="pEmpty">Alege un fișier PDF ca să-l vezi aici pe etichetă.</p></div>
+        <div class="meta"><span>Etichetă: <b id="pSize"></b></span><span>Pagina: <b id="pCur">—</b></span><span>De printat: <b id="pTot">0</b></span></div>
+        <div class="btns">
+          <button class="pri" id="pPrint1" disabled>Printează pagina</button>
+          <button class="pri" id="pPrintSel" disabled>Printează paginile alese</button>
+        </div>
+        <div class="btns sub dl">
+          <button id="pPng" disabled>PNG pagina curentă</button>
+          <button id="pPdf" disabled>PDF paginile alese</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Setări PDF">
+        <h2>Fișierul</h2>
+        <div class="f"><label class="filebtn" for="pFile" style="color:var(--accInk)">Alege PDF</label><input id="pFile" type="file" accept="application/pdf,.pdf" style="position:absolute;opacity:0;width:1px;height:1px"> <span class="hint" id="pName"></span></div>
+        <div id="pBox" hidden>
+          <label>Pagini (apasă ca să alegi; cea încadrată e afișată)</label>
+          <div class="pages" id="pPages"></div>
+          <div class="btns" style="margin-bottom:14px"><button class="sm" id="pAll">Toate</button><button class="sm" id="pNone">Niciuna</button><button class="sm" id="pPrev">‹ Anterioara</button><button class="sm" id="pNext">Următoarea ›</button></div>
+        </div>
+
+        <h2>Mărimea etichetei</h2>
+        <div class="sizebox"></div>
+
+        <h2>Potrivire pe etichetă</h2>
+        <div class="chips" id="pFit"></div>
+        <div class="row">
+          <div><label for="pRot">Rotire conținut</label><select id="pRot"><option value="auto">Automat</option><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+          <div><label for="pZoom">Zoom: <span id="pZoomV"></span></label><input id="pZoom" type="range" min="0.5" max="3" step="0.05"></div>
+          <div><label for="pCopies">Copii per pagină</label><input id="pCopies" type="number" min="1" max="99" inputmode="numeric"></div>
+        </div>
+        <label>Decupează marginile paginii (%)</label>
+        <div class="row">
+          <div><label for="cT">Sus <span id="cTv"></span></label><input id="cT" type="range" min="0" max="45" step="1"></div>
+          <div><label for="cB">Jos <span id="cBv"></span></label><input id="cB" type="range" min="0" max="45" step="1"></div>
+          <div><label for="cL">Stânga <span id="cLv"></span></label><input id="cL" type="range" min="0" max="45" step="1"></div>
+          <div><label for="cR">Dreapta <span id="cRv"></span></label><input id="cR" type="range" min="0" max="45" step="1"></div>
+        </div>
+        <h2>Calitate print</h2>
+        <div class="row">
+          <div><label for="pThr">Prag alb/negru: <span id="pThrV"></span></label><input id="pThr" type="range" min="60" max="230" step="5"></div>
+          <div><label for="pDith">Mod</label><select id="pDith"><option value="0">Text și coduri (clar)</option><option value="1">Poze (puncte / dithering)</option></select></div>
+        </div>
+        <div class="btns"><button class="sm" id="pReset">Resetează ajustările</button></div>
+        <p class="hint">Pentru AWB-uri de curier alege eticheta 100×150. Dacă PDF-ul are pe pagină mai multe etichete, decupează marginile până rămâne doar cea dorită.</p>
+      </section>
+    </div>
+  </section>
+</main>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
 {
 const $=id=>document.getElementById(id);
-const PRESETS=[[40,30],[50,30],[50,25],[40,20],[30,20],[60,40],[70,50],[100,50]];
-const LAYOUTS=[['left','QR stânga'],['top','QR sus'],['qr','Doar QR + cod'],['text','Doar text']];
-const DEF={w:50,h:30,dpi:203,layout:'left',scale:1,font:'Archivo',cur:'MDL',border:false,rot:false,show:{name:true,code:true,price:true,extra:true},
+const PRESETS=[[40,30],[50,30],[50,25],[40,20],[60,40],[70,50],[100,50],[100,100],[100,150]];
+const QR_LAYOUTS=[['left','QR stânga'],['top','QR sus'],['qr','Doar QR + cod'],['text','Doar text']];
+const BC_LAYOUTS=[['bstack','Text + cod de bare'],['bonly','Doar cod de bare'],['text','Doar text']];
+const FITS=[['contain','Încadrează'],['cover','Umple (taie)'],['stretch','Întinde']];
+const PDEF={fit:'contain',rot:'auto',zoom:1,copies:1,cT:0,cB:0,cL:0,cR:0,thr:160,dith:0};
+const DEF={w:50,h:30,dpi:203,layout:'left',bLayout:'bstack',bcFmt:'CODE128',scale:1,font:'Archivo',cur:'MDL',border:false,rot:0,gap:2,dens:8,inv:0,
+  show:{name:true,code:true,price:true,extra:true},pdf:{...PDEF},
   items:[{name:'Mănuși nitril, mărimea M (100 buc)',code:'MD-NIT-M',price:'95',extra:'Raft A2',qr:'',copies:1},
          {name:'Compozit nanohibrid A2, seringă 4 g',code:'CT-NH-A2',price:'320',extra:'',qr:'',copies:2},
          {name:'Pile endodontice K-File 25 mm #15–40',code:'CT-KF25',price:'145',extra:'Lot 2411',qr:'',copies:1}],sel:0,sample:true};
 let S;
 try{S=JSON.parse(localStorage.getItem('etq-v1'))}catch(e){}
 if(!S||!Array.isArray(S.items)||!S.items.length)S=structuredClone(DEF);
-S.show=Object.assign({},DEF.show,S.show||{});
+for(const k in DEF)if(S[k]===undefined)S[k]=structuredClone(DEF[k]);
+S.show=Object.assign({},DEF.show,S.show);S.pdf=Object.assign({},PDEF,S.pdf);S.rot=+S.rot||0;
 const save=()=>{try{localStorage.setItem('etq-v1',JSON.stringify(S))}catch(e){}};
 const cur=()=>S.items[Math.min(S.sel,S.items.length-1)];
 const px=mm=>Math.round(mm/25.4*S.dpi);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let tt;const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)};
+let view='home';
 
-function wrap(ctx,text,maxW,maxLines){
-  const words=String(text).split(/\s+/).filter(Boolean),lines=[];let line='';
-  const push=w=>{ // split very long words
-    while(ctx.measureText(w).width>maxW&&w.length>1){let i=w.length;while(i>1&&ctx.measureText(w.slice(0,i)).width>maxW)i--;lines.push(w.slice(0,i));w=w.slice(i)}return w};
-  for(const w of words){const t=line?line+' '+w:w;
-    if(ctx.measureText(t).width<=maxW)line=t;else{if(line)lines.push(line);line=push(w)}}
-  if(line)lines.push(line);
-  if(lines.length>maxLines){const k=lines.slice(0,maxLines);let l=k[maxLines-1]+'…';while(l.length>1&&ctx.measureText(l).width>maxW)l=l.slice(0,-2)+'…';k[maxLines-1]=l;return{lines:k,cut:true}}
-  return{lines,cut:false};
+/* ---------- 1-bit conversion ---------- */
+function toBW(ctx,W,H,thr,dith){
+  const d=ctx.getImageData(0,0,W,H),a=d.data;
+  if(dith){const g=new Float32Array(W*H);for(let i=0;i<W*H;i++)g[i]=a[i*4]*.3+a[i*4+1]*.59+a[i*4+2]*.11;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,o=g[i],n=o<thr?0:255,e=o-n;g[i]=n;
+      if(x+1<W)g[i+1]+=e*7/16;if(y+1<H){if(x>0)g[i+W-1]+=e*3/16;g[i+W]+=e*5/16;if(x+1<W)g[i+W+1]+=e/16}}
+    for(let i=0;i<W*H;i++){a[i*4]=a[i*4+1]=a[i*4+2]=g[i];a[i*4+3]=255}}
+  else for(let i=0;i<a.length;i+=4){const v=(a[i]*.3+a[i+1]*.59+a[i+2]*.11)<thr?0:255;a[i]=a[i+1]=a[i+2]=v;a[i+3]=255}
+  ctx.putImageData(d,0,0);
 }
 
+/* ---------- text ---------- */
+function wrap(ctx,text,maxW,maxLines){
+  const words=String(text).split(/\s+/).filter(Boolean),lines=[];let line='';
+  const push=w=>{while(ctx.measureText(w).width>maxW&&w.length>1){let i=w.length;while(i>1&&ctx.measureText(w.slice(0,i)).width>maxW)i--;lines.push(w.slice(0,i));w=w.slice(i)}return w};
+  for(const w of words){const t=line?line+' '+w:w;if(ctx.measureText(t).width<=maxW)line=t;else{if(line)lines.push(line);line=push(w)}}
+  if(line)lines.push(line);
+  if(lines.length>maxLines){const k=lines.slice(0,maxLines);let l=k[maxLines-1]+'…';while(l.length>1&&ctx.measureText(l).width>maxW)l=l.slice(0,-2)+'…';k[maxLines-1]=l;return k}
+  return lines;
+}
+const F=(b,fs)=>`${b} ${fs}px "${S.font}",Arial,sans-serif`;
+function textBlock(ctx,it,x,y,w,h,align,noCode){
+  const parts=[];
+  if(S.show.name&&it.name)parts.push({t:it.name,r:1,b:700,ml:3});
+  if(!noCode&&S.show.code&&it.code)parts.push({t:it.code,r:.78,b:400,ml:1});
+  if(S.show.extra&&it.extra)parts.push({t:it.extra,r:.78,b:400,ml:1});
+  if(S.show.price&&it.price)parts.push({t:it.price+(S.cur?' '+S.cur:''),r:1.4,b:700,ml:1});
+  if(!parts.length||w<10||h<10)return;
+  let base=h/4.6*S.scale,lay;
+  for(let k=0;k<24;k++){
+    lay=[];let tot=0;
+    for(const p of parts){const fs=Math.max(6,base*p.r);ctx.font=F(p.b,fs);const lines=wrap(ctx,p.t,w,p.ml);lay.push({p,fs,lines});tot+=lines.length*fs*1.12}
+    tot+=(lay.length-1)*base*.18;lay.tot=tot;
+    if(tot<=h||base<7)break;base*=.92;
+  }
+  let cy=y+Math.max(0,(h-lay.tot)/2);
+  ctx.fillStyle='#000';ctx.textBaseline='top';ctx.textAlign=align;
+  const ax=align==='center'?x+w/2:x;
+  for(const l of lay){ctx.font=F(l.p.b,l.fs);for(const s of l.lines){ctx.fillText(s,ax,cy+l.fs*.04);cy+=l.fs*1.12}cy+=base*.18}
+}
+
+/* ---------- codes ---------- */
 function drawQR(ctx,text,x,y,size){
   if(!text||typeof qrcode!=='function')return;
   const q=qrcode(0,'M');q.addData(unescape(encodeURIComponent(text)));q.make();
@@ -195,70 +328,92 @@ function drawQR(ctx,text,x,y,size){
   ctx.fillStyle='#000';
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect(ox+c*cell,oy+r*cell,cell,cell);
 }
-
-function textBlock(ctx,it,x,y,w,h,align){
-  const parts=[];
-  if(S.show.name&&it.name)parts.push({t:it.name,r:1,b:700,ml:3});
-  if(S.show.code&&it.code)parts.push({t:it.code,r:.78,b:400,ml:1});
-  if(S.show.extra&&it.extra)parts.push({t:it.extra,r:.78,b:400,ml:1});
-  if(S.show.price&&it.price)parts.push({t:it.price+(S.cur?' '+S.cur:''),r:1.4,b:700,ml:1});
-  if(!parts.length||w<10||h<10)return;
-  let base=h/4.6*S.scale,lay;
-  for(let k=0;k<24;k++){
-    lay=[];let tot=0;
-    for(const p of parts){const fs=Math.max(6,base*p.r);ctx.font=`${p.b} ${fs}px "${S.font}",Arial,sans-serif`;
-      const wr=wrap(ctx,p.t,w,p.ml);lay.push({p,fs,lines:wr.lines});tot+=wr.lines.length*fs*1.12}
-    tot+=(lay.length-1)*base*.18;
-    if(tot<=h||base<7){lay.tot=tot;break}
-    base*=.92;
-  }
-  let cy=y+Math.max(0,(h-lay.tot)/2);
-  ctx.fillStyle='#000';ctx.textBaseline='top';ctx.textAlign=align;
-  const ax=align==='center'?x+w/2:x;
-  for(const l of lay){ctx.font=`${l.p.b} ${l.fs}px "${S.font}",Arial,sans-serif`;
-    for(const s of l.lines){ctx.fillText(s,ax,cy+l.fs*.04);cy+=l.fs*1.12}cy+=base*.18}
+let bcWarn='';
+function drawBarcode(ctx,value,x,y,w,h){
+  if(!value){bcWarn='Lipsește codul pentru codul de bare.';return}
+  if(typeof JsBarcode!=='function'){bcWarn='Biblioteca de coduri de bare nu s-a încărcat.';return}
+  const tmp=document.createElement('canvas');let txt=value;
+  const opt={format:S.bcFmt,margin:0,displayValue:false,width:1,height:10};
+  try{JsBarcode(tmp,value,opt)}catch(e){bcWarn=`„${value}” nu e valid pentru ${S.bcFmt.replace('CODE','Code ')}.`+(S.bcFmt.startsWith('EAN')?' Folosește doar cifre.':'');
+    ctx.fillStyle='#000';ctx.font=F(700,Math.min(h/4,px(3)));ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Cod invalid',x+w/2,y+h/2);return}
+  const mods=tmp.width,k=Math.floor(w/mods);
+  if(k<1)bcWarn='Codul e prea lung pentru lățimea etichetei — poate să nu se scaneze. Mărește eticheta sau scurtează codul.';
+  const th=Math.min(h*.26,px(3.4)),bh=Math.max(10,Math.round(h-th));
+  if(S.bcFmt==='EAN13'&&/^\d{12}$/.test(value))txt=value+eanCheck(value);
+  JsBarcode(tmp,value,{...opt,width:Math.max(1,k),height:bh});
+  ctx.imageSmoothingEnabled=false;
+  const dw=Math.min(tmp.width,w);ctx.drawImage(tmp,Math.round(x+(w-dw)/2),Math.round(y),dw,bh);
+  let fs=th*.9;ctx.font=F(400,fs);while(fs>6&&ctx.measureText(txt).width>w){fs*=.92;ctx.font=F(400,fs)}
+  ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(txt,x+w/2,y+bh+(th-fs)*.35);
 }
+const eanCheck=s=>{let t=0;for(let i=0;i<12;i++)t+=+s[i]*(i%2?3:1);return(10-t%10)%10};
 
+/* ---------- label render ---------- */
 function render(it,cv){
-  const W=px(S.w),H=px(S.h),pad=px(1.5);
+  const W=px(S.w),H=px(S.h),pad=px(1.5);bcWarn='';
   cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
   ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
-  const qrt=it.qr||it.code||it.name;
-  if(S.layout==='left'){const q=Math.min(H-2*pad,W*.55);drawQR(ctx,qrt,pad,(H-q)/2,q);textBlock(ctx,it,pad*2+q,pad,W-q-pad*3,H-2*pad,'left')}
-  else if(S.layout==='top'){const q=Math.min(W-2*pad,H*.6);drawQR(ctx,qrt,(W-q)/2,pad,q);textBlock(ctx,it,pad,pad*1.5+q,W-2*pad,H-q-pad*2.5,'center')}
-  else if(S.layout==='qr'){const th=it.code?H*.16:0,q=Math.min(W-2*pad,H-2*pad-th);drawQR(ctx,qrt,(W-q)/2,pad,q);
-    if(it.code){let fs=th*.85;ctx.font=`700 ${fs}px "${S.font}",Arial,sans-serif`;while(fs>6&&ctx.measureText(it.code).width>W-2*pad){fs*=.92;ctx.font=`700 ${fs}px "${S.font}",Arial,sans-serif`}
-      ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,pad+q+(th-fs)/2)}}
-  else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
+  const val=it.qr||it.code||it.name;
+  if(view==='barcode'){
+    const bv=it.qr||it.code,L=S.bLayout;
+    if(L==='bonly')drawBarcode(ctx,bv,pad*2,pad,W-pad*4,H-2*pad);
+    else if(L==='bstack'){const hasT=(S.show.name&&it.name)||(S.show.price&&it.price)||(S.show.extra&&it.extra);
+      const th=hasT?(H-2*pad)*.42:0;if(hasT)textBlock(ctx,it,pad,pad,W-2*pad,th,'center',true);
+      drawBarcode(ctx,bv,pad*2,pad+th+(hasT?pad*.6:0),W-pad*4,H-2*pad-th-(hasT?pad*.6:0))}
+    else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
+  }else{
+    const L=S.layout;
+    if(L==='left'){const q=Math.min(H-2*pad,W*.55);drawQR(ctx,val,pad,(H-q)/2,q);textBlock(ctx,it,pad*2+q,pad,W-q-pad*3,H-2*pad,'left')}
+    else if(L==='top'){const q=Math.min(W-2*pad,H*.6);drawQR(ctx,val,(W-q)/2,pad,q);textBlock(ctx,it,pad,pad*1.5+q,W-2*pad,H-q-pad*2.5,'center')}
+    else if(L==='qr'){const th=it.code?H*.16:0,q=Math.min(W-2*pad,H-2*pad-th);drawQR(ctx,val,(W-q)/2,pad,q);
+      if(it.code){let fs=th*.85;ctx.font=F(700,fs);while(fs>6&&ctx.measureText(it.code).width>W-2*pad){fs*=.92;ctx.font=F(700,fs)}
+        ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,pad+q+(th-fs)/2)}}
+    else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
+  }
   if(S.border){const lw=Math.max(1,px(.3));ctx.lineWidth=lw;ctx.strokeStyle='#000';ctx.strokeRect(lw/2+px(.5),lw/2+px(.5),W-lw-px(1),H-lw-px(1))}
-  // pure black & white for thermal print
-  const d=ctx.getImageData(0,0,W,H),a=d.data;
-  for(let i=0;i<a.length;i+=4){const v=(a[i]*.3+a[i+1]*.59+a[i+2]*.11)<150?0:255;a[i]=a[i+1]=a[i+2]=v;a[i+3]=255}
-  ctx.putImageData(d,0,0);
+  toBW(ctx,W,H,150,0);
   return cv;
 }
-
-function exportCanvas(it){
-  const c=render(it,document.createElement('canvas'));
+function rotCanvas(c){
   if(!S.rot)return c;
   const r=document.createElement('canvas');r.width=c.height;r.height=c.width;
   const x=r.getContext('2d');x.translate(r.width,0);x.rotate(Math.PI/2);x.drawImage(c,0,0);return r;
 }
+const labelCanvas=it=>rotCanvas(render(it,document.createElement('canvas')));
 
+/* ---------- size box (shared) ---------- */
+function sizeHTML(){
+  return `<div class="chips">${PRESETS.map(([w,h])=>`<button data-w="${w}" data-h="${h}" aria-pressed="${S.w==w&&S.h==h}">${w}×${h}</button>`).join('')}</div>
+  <div class="row"><div><label>Lățime (mm)<input class="sw" type="number" inputmode="decimal" min="10" max="110" step="1" value="${S.w}"></label></div>
+  <div><label>Înălțime (mm)<input class="sh" type="number" inputmode="decimal" min="10" max="300" step="1" value="${S.h}"></label></div>
+  <div><label>Rezoluție<select class="sd"><option value="203"${S.dpi==203?' selected':''}>203 dpi (X4)</option><option value="300"${S.dpi==300?' selected':''}>300 dpi</option></select></label></div></div>`;
+}
+function syncSize(){document.querySelectorAll('.sizebox').forEach(b=>b.innerHTML=sizeHTML())}
+function redraw(){if(view==='pdf')pdfDraw();else if(view!=='home')draw()}
+document.addEventListener('click',e=>{const b=e.target.closest('.sizebox .chips button');if(!b)return;S.w=+b.dataset.w;S.h=+b.dataset.h;syncSize();redraw();save()});
+document.addEventListener('input',e=>{const t=e.target;if(!t.closest('.sizebox'))return;
+  if(t.matches('.sw,.sh')){const v=parseFloat(t.value);if(v>=10&&v<=300){S[t.matches('.sw')?'w':'h']=v;
+    document.querySelectorAll('.sizebox .chips button').forEach(b=>b.setAttribute('aria-pressed',S.w==b.dataset.w&&S.h==b.dataset.h));
+    document.querySelectorAll(t.matches('.sw')?'.sw':'.sh').forEach(o=>{if(o!==t)o.value=v});redraw();save()}}
+  if(t.matches('.sd')){S.dpi=+t.value;syncSize();redraw();save()}});
+
+/* ---------- label editor ---------- */
 function draw(){
   const it=cur();render(it,$('cv'));
   $('mSize').textContent=`${S.w} × ${S.h} mm`;$('mPx').textContent=`${px(S.w)} × ${px(S.h)}`;
   $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);
-  $('lpImg').src=exportCanvas(it).toDataURL('image/png');
+  $('lWarn').hidden=!bcWarn;$('lWarn').textContent=bcWarn;
 }
-
 function syncForm(){
-  $('w').value=S.w;$('h').value=S.h;$('dpi').value=S.dpi;$('scale').value=S.scale;$('scaleV').textContent=Math.round(S.scale*100)+'%';
-  $('font').value=S.font;$('cur').value=S.cur;
-  $('sName').checked=S.show.name;$('sCode').checked=S.show.code;$('sPrice').checked=S.show.price;$('sExtra').checked=S.show.extra;$('sBorder').checked=S.border;$('sRot').checked=S.rot;
+  const bc=view==='barcode';
+  $('scale').value=S.scale;$('scaleV').textContent=Math.round(S.scale*100)+'%';
+  $('font').value=S.font;$('cur').value=S.cur;$('bcFmt').value=S.bcFmt;$('bcFmtBox').hidden=!bc;
+  $('qrLbl').textContent=bc?'Conținut cod de bare (gol = se folosește codul)':'Conținut QR (gol = se folosește codul)';
+  $('qr').placeholder=bc?'ex. 4840000123456':'ex. link spre produs sau cod';
+  $('sName').checked=S.show.name;$('sCode').checked=S.show.code;$('sPrice').checked=S.show.price;$('sExtra').checked=S.show.extra;$('sBorder').checked=S.border;
   const it=cur();for(const k of ['name','code','price','extra','qr'])$(k).value=it[k]||'';
-  $('presets').innerHTML=PRESETS.map(([w,h])=>`<button data-w="${w}" data-h="${h}" aria-pressed="${S.w==w&&S.h==h}">${w}×${h}</button>`).join('');
-  $('layouts').innerHTML=LAYOUTS.map(([k,l])=>`<button data-l="${k}" aria-pressed="${S.layout===k}">${l}</button>`).join('');
+  const L=bc?BC_LAYOUTS:QR_LAYOUTS,cl=bc?S.bLayout:S.layout;
+  $('layouts').innerHTML=L.map(([k,l])=>`<button data-l="${k}" aria-pressed="${cl===k}">${l}</button>`).join('');
 }
 function list(){
   $('cnt').textContent=S.items.length;$('sampleNote').hidden=!S.sample;
@@ -267,27 +422,21 @@ function list(){
 const all=()=>{syncForm();list();draw();save()};
 const upd=()=>{list();draw();save()};
 
-$('presets').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.w=+b.dataset.w;S.h=+b.dataset.h;all()});
-$('layouts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.layout=b.dataset.l;all()});
-for(const k of ['w','h'])$(k).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>=10&&v<=150){S[k]=v;draw();save();
-  for(const b of $('presets').children)b.setAttribute('aria-pressed',S.w==b.dataset.w&&S.h==b.dataset.h)}});
-$('dpi').addEventListener('change',e=>{S.dpi=+e.target.value;draw();save()});
+$('layouts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(view==='barcode')S.bLayout=b.dataset.l;else S.layout=b.dataset.l;all()});
+$('bcFmt').addEventListener('change',e=>{S.bcFmt=e.target.value;draw();save()});
 $('scale').addEventListener('input',e=>{S.scale=+e.target.value;$('scaleV').textContent=Math.round(S.scale*100)+'%';draw();save()});
 $('font').addEventListener('change',e=>{S.font=e.target.value;draw();save()});
 $('cur').addEventListener('input',e=>{S.cur=e.target.value.trim();draw();save()});
 const chk={sName:'name',sCode:'code',sPrice:'price',sExtra:'extra'};
 for(const id in chk)$(id).addEventListener('change',e=>{S.show[chk[id]]=e.target.checked;draw();save()});
 $('sBorder').addEventListener('change',e=>{S.border=e.target.checked;draw();save()});
-$('sRot').addEventListener('change',e=>{S.rot=e.target.checked;draw();save()});
 for(const k of ['name','code','price','extra','qr'])$(k).addEventListener('input',e=>{cur()[k]=e.target.value;S.sample=false;upd()});
-
 $('tb').addEventListener('click',e=>{if(e.target.matches('input'))return;const tr=e.target.closest('tr');if(!tr)return;S.sel=+tr.dataset.i;all()});
 $('tb').addEventListener('input',e=>{if(!e.target.matches('.cp'))return;S.items[+e.target.dataset.i].copies=Math.max(0,parseInt(e.target.value)||0);
   $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);save()});
 $('bAdd').addEventListener('click',()=>{S.items.push({name:'',code:'',price:'',extra:'',qr:'',copies:1});S.sel=S.items.length-1;all();$('name').focus()});
 $('bDup').addEventListener('click',()=>{S.items.splice(S.sel+1,0,structuredClone(cur()));S.sel++;all()});
-$('bDel').addEventListener('click',()=>{if(S.items.length<2){Object.assign(cur(),{name:'',code:'',price:'',extra:'',qr:''})}else{S.items.splice(S.sel,1);S.sel=Math.max(0,S.sel-1)}all();toast('Produs șters')});
-
+$('bDel').addEventListener('click',()=>{if(S.items.length<2)Object.assign(cur(),{name:'',code:'',price:'',extra:'',qr:''});else{S.items.splice(S.sel,1);S.sel=Math.max(0,S.sel-1)}all();toast('Produs șters')});
 function parse(txt){
   return txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{const c=l.split(l.includes('\t')?'\t':';').map(x=>x.trim());
     return{name:c[0]||'',code:c[1]||'',price:c[2]||'',qr:c[3]||'',extra:'',copies:Math.max(1,parseInt(c[4])||1)}});
@@ -298,37 +447,104 @@ function imp(replace){const rows=parse($('imp').value);if(!rows.length){toast('L
 $('bImpAdd').addEventListener('click',()=>imp(false));
 $('bImpRep').addEventListener('click',()=>imp(true));
 
-const fname=s=>(s||'eticheta').replace(/[^\w\-ăâîșțĂÂÎȘȚ]+/g,'_').slice(0,40);
-let DL=null;
-async function give(filename,data){
-  if(!DL){toast('Salvarea nu e disponibilă aici — ține apăsat pe imagine');return}
-  try{await DL.save({filename,data});toast('Gata')}catch(e){if(e&&e.code!=='declined')toast('Nu s-a putut salva: '+(e.message||e.code))}
+/* ---------- PDF ---------- */
+let PDF=null,pSel=[],pIdx=0,srcCache=new Map(),pBusy=0;
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+function pSync(){
+  const P=S.pdf;
+  $('pFit').innerHTML=FITS.map(([k,l])=>`<button data-f="${k}" aria-pressed="${P.fit===k}">${l}</button>`).join('');
+  $('pRot').value=P.rot;$('pZoom').value=P.zoom;$('pZoomV').textContent=Math.round(P.zoom*100)+'%';$('pCopies').value=P.copies;
+  for(const k of ['cT','cB','cL','cR']){$(k).value=P[k];$(k+'v').textContent=P[k]+'%'}
+  $('pThr').value=P.thr;$('pThrV').textContent=P.thr;$('pDith').value=P.dith;
 }
-function pdf(items){
-  if(!window.jspdf){toast('PDF indisponibil');return null}
-  const pw=S.rot?S.h:S.w,ph=S.rot?S.w:S.h,o=pw>ph?'landscape':'portrait';
-  const doc=new jspdf.jsPDF({unit:'mm',format:[pw,ph],orientation:o,compress:true});let first=true;
-  for(const it of items){const img=exportCanvas(it).toDataURL('image/png');
-    for(let c=0;c<(+it.copies||0);c++){if(!first)doc.addPage([pw,ph],o);doc.addImage(img,'PNG',0,0,pw,ph,undefined,'FAST');first=false}}
-  return first?null:doc.output('blob');
+function pPagesUI(){
+  if(!PDF)return;
+  $('pPages').innerHTML=pSel.map((s,i)=>`<button data-i="${i}" aria-pressed="${s}" class="${i===pIdx?'cur':''}">${i+1}</button>`).join('');
+  const n=pSel.filter(Boolean).length;$('pTot').textContent=`${n} pag. × ${S.pdf.copies}`;
+  $('pCur').textContent=`${pIdx+1} din ${pSel.length}`;
+  $('pPrintSel').disabled=!BT||!n;$('pPdf').disabled=!n;
 }
-$('bPng').addEventListener('click',()=>{const c=exportCanvas(cur());c.toBlob(b=>give(fname(cur().code||cur().name)+'.png',b),'image/png')});
-$('bPdf1').addEventListener('click',()=>{const b=pdf([{...cur(),copies:Math.max(1,+cur().copies||1)}]);if(b)give(fname(cur().code||cur().name)+'.pdf',b)});
-$('bPdfAll').addEventListener('click',()=>{const b=pdf(S.items);if(!b){toast('Nicio copie de printat');return}give(`etichete_${S.w}x${S.h}mm.pdf`,b)});
+async function srcPage(i,rot,scale){
+  const key=i+'|'+rot+'|'+scale.toFixed(3);if(srcCache.has(key))return srcCache.get(key);
+  const page=await PDF.getPage(i+1),vp=page.getViewport({scale,rotation:(page.rotate+rot)%360});
+  const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+  await page.render({canvasContext:x,viewport:vp}).promise;
+  if(srcCache.size>6)srcCache.delete(srcCache.keys().next().value);
+  srcCache.set(key,c);return c;
+}
+async function pdfLabel(i,cv){
+  const P=S.pdf,W=px(S.w),H=px(S.h);
+  const page=await PDF.getPage(i+1),v1=page.getViewport({scale:1,rotation:page.rotate});
+  let rot=P.rot==='auto'?(((v1.width>v1.height)!==(W>H))&&Math.abs(v1.width-v1.height)>5?90:0):+P.rot;
+  const sw0=rot%180?v1.height:v1.width,sh0=rot%180?v1.width:v1.height;
+  const cw=sw0*(1-(P.cL+P.cR)/100),ch=sh0*(1-(P.cT+P.cB)/100);
+  let sx=W/cw,sy=H/ch;
+  if(P.fit==='contain')sx=sy=Math.min(sx,sy);else if(P.fit==='cover')sx=sy=Math.max(sx,sy);
+  sx*=P.zoom;sy*=P.zoom;
+  const scale=Math.min(6,Math.max(sx,sy)*1.5);
+  const src=await srcPage(i,rot,scale);
+  const k=scale;// src px per pdf unit
+  cv.width=W;cv.height=H;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';
+  const dw=cw*sx,dh=ch*sy;
+  x.drawImage(src,sw0*P.cL/100*k,sh0*P.cT/100*k,cw*k,ch*k,(W-dw)/2,(H-dh)/2,dw,dh);
+  toBW(x,W,H,P.thr,+P.dith);
+  return cv;
+}
+let pT=0;
+function pdfDraw(){
+  $('pSize').textContent=`${S.w} × ${S.h} mm`;
+  if(!PDF)return;
+  const my=++pT;
+  pdfLabel(pIdx,document.createElement('canvas')).then(c=>{if(my!==pT)return;const v=$('pcv');v.width=c.width;v.height=c.height;v.getContext('2d').drawImage(c,0,0);v.hidden=false;$('pEmpty').hidden=true})
+    .catch(e=>toast('Nu pot desena pagina: '+(e.message||e)));
+  pPagesUI();
+}
+$('pFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(!window.pdfjsLib){toast('Cititorul PDF nu s-a încărcat — verifică internetul');return}
+  try{$('pName').textContent='Se încarcă…';
+    PDF=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;srcCache.clear();
+    pSel=Array.from({length:PDF.numPages},()=>true);pIdx=0;$('pName').textContent=`${f.name} · ${PDF.numPages} pag.`;
+    $('pBox').hidden=false;$('pPng').disabled=false;$('pPrint1').disabled=!BT;pdfDraw();
+  }catch(err){$('pName').textContent='';toast('Nu pot deschide PDF-ul: '+(err.message||err))}
+  e.target.value='';
+});
+$('pPages').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i;
+  if(i===pIdx)pSel[i]=!pSel[i];else{pIdx=i;pSel[i]=true}pdfDraw()});
+$('pAll').addEventListener('click',()=>{pSel=pSel.map(()=>true);pPagesUI()});
+$('pNone').addEventListener('click',()=>{pSel=pSel.map(()=>false);pPagesUI()});
+$('pPrev').addEventListener('click',()=>{if(pIdx>0){pIdx--;pdfDraw()}});
+$('pNext').addEventListener('click',()=>{if(PDF&&pIdx<pSel.length-1){pIdx++;pdfDraw()}});
+$('pFit').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.pdf.fit=b.dataset.f;pSync();pdfDraw();save()});
+$('pRot').addEventListener('change',e=>{S.pdf.rot=e.target.value;pdfDraw();save()});
+const pNum=(id,key,lab,fmt)=>$(id).addEventListener('input',e=>{S.pdf[key]=+e.target.value;if(lab)$(lab).textContent=fmt(S.pdf[key]);pdfDraw();save()});
+pNum('pZoom','zoom','pZoomV',v=>Math.round(v*100)+'%');
+for(const k of ['cT','cB','cL','cR'])pNum(k,k,k+'v',v=>v+'%');
+pNum('pThr','thr','pThrV',v=>v);
+$('pDith').addEventListener('change',e=>{S.pdf.dith=+e.target.value;pdfDraw();save()});
+$('pCopies').addEventListener('input',e=>{S.pdf.copies=Math.max(1,Math.min(99,parseInt(e.target.value)||1));pPagesUI();save()});
+$('pReset').addEventListener('click',()=>{S.pdf={...PDEF,copies:S.pdf.copies};pSync();pdfDraw();save()});
 
-all();
-if(document.fonts)document.fonts.load('700 20px "Archivo"').then(()=>document.fonts.load('700 20px "Archivo Narrow"')).then(draw).catch(()=>{});
-// ---------- Bluetooth direct print (TSPL) ----------
-S.gap=S.gap??2;S.dens=S.dens??8;S.inv=S.inv??0;
-$('gap').value=S.gap;$('dens').value=S.dens;$('inv').value=S.inv;
+/* ---------- Bluetooth (TSPL) ---------- */
+$('gap').value=S.gap;$('dens').value=S.dens;$('inv').value=S.inv;$('rot').value=S.rot;
 $('gap').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>=0&&v<=10){S.gap=v;save()}});
 $('dens').addEventListener('change',e=>{S.dens=+e.target.value;save()});
 $('inv').addEventListener('change',e=>{S.inv=+e.target.value;save()});
+$('rot').addEventListener('change',e=>{S.rot=+e.target.value;save()});
 const SVC=['18f0','ff00','ff10','ff12','fee7','ae00','ae30','ae3a','abf0','fff0','ffe0','ffe5','fef0'].map(x=>'0000'+x+'-0000-1000-8000-00805f9b34fb').concat(['49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2']);
-let BT=null;const bst=m=>{$('btState').textContent=m};
-const hasBT=!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
-if(!hasBT){$('bConn').disabled=true}
+let BT=null,printing=false;
+const bst=m=>{$('btState').textContent=m};
+function btUI(){
+  const on=!!BT&&!printing;$('dot').classList.toggle('on',!!BT);
+  $('bConn').textContent=BT?'Reconectează':'Conectează imprimanta';
+  $('bPrint1').disabled=$('bPrintAll').disabled=!on;
+  $('pPrint1').disabled=!on||!PDF;$('pPrintSel').disabled=!on||!PDF||!pSel.some(Boolean);
+}
+if(!(navigator.bluetooth&&navigator.bluetooth.requestDevice)){bst('Print direct: deschide pagina în Bluefy');}
 async function connect(){
+  if(!(navigator.bluetooth&&navigator.bluetooth.requestDevice)){toast('Bluetooth merge doar în browserul Bluefy');return}
   let step='start';
   try{
     step='alegere';bst('Caut imprimanta…');
@@ -345,44 +561,81 @@ async function connect(){
       for(const c of cs){if(!ch&&(c.properties.writeWithoutResponse||c.properties.write))ch=c}
     }
     if(!ch)throw new Error('nu am găsit canal de scriere ['+(found.join(' | ')||'niciun serviciu')+']');
-    BT={dev,ch};dev.addEventListener('gattserverdisconnected',()=>{BT=null;$('bPrint1').disabled=$('bPrintAll').disabled=true;bst('Imprimanta s-a deconectat')});
-    $('bPrint1').disabled=$('bPrintAll').disabled=false;bst('Conectat: '+(dev.name||'imprimantă'));
-  }catch(e){{const m=e&&e.message?e.message:(typeof e==='object'?JSON.stringify(e):String(e));bst(/cancel/i.test(m)?'Nicio imprimantă aleasă':`Conectare eșuată la pasul „${step}”: ${e&&e.name?e.name+' – ':''}${m}`)}}
+    BT={dev,ch};dev.addEventListener('gattserverdisconnected',()=>{BT=null;btUI();bst('Imprimanta s-a deconectat')});
+    bst('Conectat: '+(dev.name||'imprimantă'));btUI();
+  }catch(e){const m=e&&e.message?e.message:(typeof e==='object'?JSON.stringify(e):String(e));bst(/cancel/i.test(m)?'Nicio imprimantă aleasă':`Conectare eșuată la pasul „${step}”: ${e&&e.name?e.name+' – ':''}${m}`)}
 }
 const enc=s=>new TextEncoder().encode(s);
-function tspl(it){
-  const c=exportCanvas(it),W=c.width,H=c.height,bpr=Math.ceil(W/8);
+function tspl(c,copies){
+  const W=c.width,H=c.height,bpr=Math.ceil(W/8);
   const d=c.getContext('2d').getImageData(0,0,W,H).data,bmp=new Uint8Array(bpr*H);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){const black=d[(y*W+x)*4]<128;const bit=S.inv?black:!black; // TSPL: 0 = punct negru
     if(bit)bmp[y*bpr+(x>>3)]|=0x80>>(x&7)}
   for(let x=W;x<bpr*8;x++)for(let y=0;y<H;y++)if(!S.inv)bmp[y*bpr+(x>>3)]|=0x80>>(x&7);
   const mmW=(W/S.dpi*25.4).toFixed(1),mmH=(H/S.dpi*25.4).toFixed(1);
   const head=enc(`SIZE ${mmW} mm,${mmH} mm\r\nGAP ${S.gap} mm,0 mm\r\nDENSITY ${S.dens}\r\nSPEED 4\r\nDIRECTION 1,0\r\nREFERENCE 0,0\r\nCLS\r\nBITMAP 0,0,${bpr},${H},0,`);
-  const tail=enc(`\r\nPRINT 1,${Math.max(1,+it.copies||1)}\r\n`);
+  const tail=enc(`\r\nPRINT 1,${Math.max(1,copies|0)}\r\n`);
   const out=new Uint8Array(head.length+bmp.length+tail.length);out.set(head);out.set(bmp,head.length);out.set(tail,head.length+bmp.length);return out;
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function send(bytes){
+async function send(bytes,label){
   const ch=BT.ch,wr=ch.properties.write&&!ch.properties.writeWithoutResponse,n=wr?180:100;
   for(let i=0;i<bytes.length;i+=n){const part=bytes.slice(i,i+n);
-    if(wr)await ch.writeValueWithResponse(part);else{await ch.writeValueWithoutResponse(part);await sleep(12)}}
+    if(wr)await ch.writeValueWithResponse(part);else{await ch.writeValueWithoutResponse(part);await sleep(12)}
+    if(i%(n*40)===0)bst(`${label} ${Math.round(i/bytes.length*100)}%`)}
 }
-async function printItems(items){
-  if(!BT){bst('Conectează întâi imprimanta');return}
-  $('bPrint1').disabled=$('bPrintAll').disabled=true;
-  try{let k=0;for(const it of items){if(!(+it.copies>0))continue;bst(`Trimit ${++k}/${items.length}…`);await send(tspl(it));await sleep(300)}bst('Trimis la imprimantă ✓')}
+// jobs: [{get: async()=>canvas, copies}]
+async function runJobs(jobs){
+  if(!BT){toast('Conectează întâi imprimanta (sus, dreapta)');return}
+  if(printing)return;printing=true;btUI();
+  try{let k=0;for(const j of jobs){k++;const c=rotCanvas(await j.get());await send(tspl(c,j.copies),`Trimit ${k}/${jobs.length}…`);await sleep(300)}bst('Trimis la imprimantă ✓')}
   catch(e){bst('Eroare la print: '+(e.message||e))}
-  finally{if(BT)$('bPrint1').disabled=$('bPrintAll').disabled=false}
+  finally{printing=false;btUI()}
 }
 $('bConn').addEventListener('click',connect);
-$('bPrint1').addEventListener('click',()=>printItems([{...cur(),copies:Math.max(1,+cur().copies||1)}]));
-$('bPrintAll').addEventListener('click',()=>printItems(S.items));
+$('bPrint1').addEventListener('click',()=>{const it=cur();runJobs([{get:async()=>render(it,document.createElement('canvas')),copies:Math.max(1,+it.copies||1)}])});
+$('bPrintAll').addEventListener('click',()=>runJobs(S.items.filter(i=>+i.copies>0).map(it=>({get:async()=>render(it,document.createElement('canvas')),copies:+it.copies}))));
+$('pPrint1').addEventListener('click',()=>{const i=pIdx;runJobs([{get:()=>pdfLabel(i,document.createElement('canvas')),copies:S.pdf.copies}])});
+$('pPrintSel').addEventListener('click',()=>runJobs(pSel.map((s,i)=>s?i:-1).filter(i=>i>=0).map(i=>({get:()=>pdfLabel(i,document.createElement('canvas')),copies:S.pdf.copies}))));
 
-// ---------- downloads: Claude capability or plain browser ----------
+/* ---------- downloads ---------- */
+const fname=s=>(s||'eticheta').replace(/[^\w\-ăâîșțĂÂÎȘȚ]+/g,'_').slice(0,40);
 const plain=(filename,data)=>{const u=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));const a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)};
 const inClaude=window.top!==window.self;
-const noDL=()=>{if(inClaude){$('dlBtns').hidden=true;$('dlHint').hidden=true}else{DL={save:async({filename,data})=>{plain(filename,data);return{status:'saved'}}};$('dlHint').textContent='Fișierul se descarcă; pe iPad îl găsești în Fișiere → Descărcări.'}};
-let tries=0;const hook=()=>{if(!inClaude){noDL();return}if(window.claude&&claude.use){claude.use('downloads').then(d=>{DL=d;if(!d)noDL()}).catch(noDL)}else if(++tries<20)setTimeout(hook,250);else noDL()};hook();
+let DL=inClaude?null:{save:async({filename,data})=>{plain(filename,data);return{status:'saved'}}};
+async function give(filename,data){
+  if(!DL){toast('Salvarea nu e disponibilă aici');return}
+  try{await DL.save({filename,data});toast('Gata')}catch(e){if(e&&e.code!=='declined')toast('Nu s-a putut salva: '+(e.message||e.code))}
+}
+async function pdfOf(canvases){
+  if(!window.jspdf){toast('PDF indisponibil');return null}
+  if(!canvases.length)return null;
+  const c0=canvases[0].c,pw=c0.width/S.dpi*25.4,ph=c0.height/S.dpi*25.4,o=pw>ph?'landscape':'portrait';
+  const doc=new jspdf.jsPDF({unit:'mm',format:[pw,ph],orientation:o,compress:true});let first=true;
+  for(const {c,n} of canvases){const img=c.toDataURL('image/png');for(let k=0;k<n;k++){if(!first)doc.addPage([pw,ph],o);doc.addImage(img,'PNG',0,0,pw,ph,undefined,'FAST');first=false}}
+  return doc.output('blob');
+}
+$('bPng').addEventListener('click',()=>{labelCanvas(cur()).toBlob(b=>give(fname(cur().code||cur().name)+'.png',b),'image/png')});
+$('bPdf1').addEventListener('click',async()=>{const b=await pdfOf([{c:labelCanvas(cur()),n:Math.max(1,+cur().copies||1)}]);if(b)give(fname(cur().code||cur().name)+'.pdf',b)});
+$('bPdfAll').addEventListener('click',async()=>{const b=await pdfOf(S.items.filter(i=>+i.copies>0).map(it=>({c:labelCanvas(it),n:+it.copies})));if(!b){toast('Nicio copie de printat');return}give(`etichete_${S.w}x${S.h}mm.pdf`,b)});
+$('pPng').addEventListener('click',async()=>{if(!PDF)return;const c=rotCanvas(await pdfLabel(pIdx,document.createElement('canvas')));c.toBlob(b=>give(`pagina_${pIdx+1}.png`,b),'image/png')});
+$('pPdf').addEventListener('click',async()=>{if(!PDF)return;const L=[];for(let i=0;i<pSel.length;i++)if(pSel[i])L.push({c:rotCanvas(await pdfLabel(i,document.createElement('canvas'))),n:S.pdf.copies});
+  const b=await pdfOf(L);if(b)give(`pdf_${S.w}x${S.h}mm.pdf`,b)});
+const noDL=()=>document.querySelectorAll('.dl').forEach(d=>d.hidden=true);
+if(inClaude){let tries=0;const hook=()=>{if(window.claude&&claude.use)claude.use('downloads').then(d=>{DL=d;if(!d)noDL()}).catch(noDL);else if(++tries<20)setTimeout(hook,250);else noDL()};hook()}
+
+/* ---------- routing ---------- */
+function route(){
+  const h=location.hash.slice(1);view=['qr','barcode','pdf'].includes(h)?h:'home';
+  $('v-home').hidden=view!=='home';$('v-label').hidden=!(view==='qr'||view==='barcode');$('v-pdf').hidden=view!=='pdf';
+  document.querySelectorAll('nav a').forEach(a=>{if(a.dataset.v===view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  syncSize();
+  if(view==='qr'||view==='barcode')all();else if(view==='pdf'){pSync();pdfDraw()}
+  btUI();window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+route();
+if(document.fonts)document.fonts.load('700 20px "Archivo"').then(()=>document.fonts.load('700 20px "Archivo Narrow"')).then(()=>{if(view==='qr'||view==='barcode')draw()}).catch(()=>{});
 }
 </script>
 </body>
