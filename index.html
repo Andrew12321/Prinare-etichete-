@@ -324,7 +324,7 @@ $('gap').value=S.gap;$('dens').value=S.dens;$('inv').value=S.inv;
 $('gap').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>=0&&v<=10){S.gap=v;save()}});
 $('dens').addEventListener('change',e=>{S.dens=+e.target.value;save()});
 $('inv').addEventListener('change',e=>{S.inv=+e.target.value;save()});
-const SVC=[0x18f0,0xff00,0xfee7,0xae30,0xae3a,0xfff0,'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2','0000ff00-0000-1000-8000-00805f9b34fb'];
+const SVC=[0x18f0,0xff00,0xff10,0xff12,0xfee7,0xae00,0xae30,0xae3a,0xabf0,0xfff0,0xffe0,0xffe5,0xfef0,0x1800,0x180a,'0000ff00-0000-1000-8000-00805f9b34fb'.replace('ff00','fff0'),'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2','0000ff00-0000-1000-8000-00805f9b34fb'];
 let BT=null;const bst=m=>{$('btState').textContent=m};
 const hasBT=!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
 if(!hasBT){$('bConn').disabled=true}
@@ -333,16 +333,17 @@ async function connect(){
     bst('Caut imprimanta…');
     const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:SVC});
     const gatt=await dev.gatt.connect();
-    let ch=null;
-    for(const s of await gatt.getPrimaryServices()){
+    let ch=null,found=[];
+    let svcs=[];try{svcs=await gatt.getPrimaryServices()}catch(e){found.push('servicii: '+e.message)}
+    for(const s of svcs){
       let cs=[];try{cs=await s.getCharacteristics()}catch(e){}
-      for(const c of cs){if(c.properties.writeWithoutResponse||c.properties.write){ch=c;break}}
-      if(ch)break;
+      found.push(s.uuid.slice(4,8)+':'+cs.map(c=>c.uuid.slice(4,8)+(c.properties.write||c.properties.writeWithoutResponse?'w':'')).join(','));
+      for(const c of cs){if(!ch&&(c.properties.writeWithoutResponse||c.properties.write))ch=c}
     }
-    if(!ch)throw new Error('nu am găsit canal de scriere');
+    if(!ch)throw new Error('nu am găsit canal de scriere ['+(found.join(' | ')||'niciun serviciu')+']');
     BT={dev,ch};dev.addEventListener('gattserverdisconnected',()=>{BT=null;$('bPrint1').disabled=$('bPrintAll').disabled=true;bst('Imprimanta s-a deconectat')});
     $('bPrint1').disabled=$('bPrintAll').disabled=false;bst('Conectat: '+(dev.name||'imprimantă'));
-  }catch(e){bst(e&&e.name==='NotFoundError'?'Nicio imprimantă aleasă':'Conectare eșuată: '+(e.message||e))}
+  }catch(e){bst(e&&e.name==='NotFoundError'&&/cancel/i.test(e.message)?'Nicio imprimantă aleasă':'Conectare eșuată: '+(e&&e.name?e.name+' – ':'')+(e.message||e))}
 }
 const enc=s=>new TextEncoder().encode(s);
 function tspl(it){
