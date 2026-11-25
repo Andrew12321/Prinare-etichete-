@@ -174,6 +174,7 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
           <label><input type="checkbox" id="sExtra">Rând suplimentar</label>
           <label><input type="checkbox" id="sBorder">Chenar</label>
         </div>
+        <div class="f" id="qrSizeBox"><label for="qrSize">Mărime QR: <span id="qrSizeV"></span></label><input id="qrSize" type="range" min="0.5" max="1.6" step="0.05"></div>
         <div class="row">
           <div><label for="scale">Mărime text: <span id="scaleV"></span></label><input id="scale" type="range" min="0.6" max="1.6" step="0.05"></div>
           <div><label for="font">Font</label><select id="font"><option value="Archivo">Archivo</option><option value="Archivo Narrow">Archivo Narrow (îngust)</option><option value="Arial">Arial</option></select></div>
@@ -295,7 +296,7 @@ function wrap(ctx,text,maxW,maxLines){
   const push=w=>{while(ctx.measureText(w).width>maxW&&w.length>1){let i=w.length;while(i>1&&ctx.measureText(w.slice(0,i)).width>maxW)i--;lines.push(w.slice(0,i));w=w.slice(i)}return w};
   for(const w of words){const t=line?line+' '+w:w;if(ctx.measureText(t).width<=maxW)line=t;else{if(line)lines.push(line);line=push(w)}}
   if(line)lines.push(line);
-  if(lines.length>maxLines){const k=lines.slice(0,maxLines);let l=k[maxLines-1]+'…';while(l.length>1&&ctx.measureText(l).width>maxW)l=l.slice(0,-2)+'…';k[maxLines-1]=l;return k}
+  if(lines.length>maxLines){const k=lines.slice(0,maxLines);let l=k[maxLines-1]+'…';while(l.length>1&&ctx.measureText(l).width>maxW)l=l.slice(0,-2)+'…';k[maxLines-1]=l;k.cut=1;return k}
   return lines;
 }
 const F=(b,fs)=>`${b} ${fs}px "${S.font}",Arial,sans-serif`;
@@ -308,10 +309,10 @@ function textBlock(ctx,it,x,y,w,h,align,noCode){
   if(!parts.length||w<10||h<10)return;
   let base=h/4.6*S.scale,lay;
   for(let k=0;k<24;k++){
-    lay=[];let tot=0;
-    for(const p of parts){const fs=Math.max(6,base*p.r);ctx.font=F(p.b,fs);const lines=wrap(ctx,p.t,w,p.ml);lay.push({p,fs,lines});tot+=lines.length*fs*1.12}
+    lay=[];let tot=0,cut=0;
+    for(const p of parts){const fs=Math.max(6,base*p.r);ctx.font=F(p.b,fs);const lines=wrap(ctx,p.t,w,p.ml);if(lines.cut&&p.ml===1)cut=1;lay.push({p,fs,lines});tot+=lines.length*fs*1.12}
     tot+=(lay.length-1)*base*.18;lay.tot=tot;
-    if(tot<=h||base<7)break;base*=.92;
+    if((tot<=h&&!cut)||base<7)break;base*=.92;
   }
   let cy=y+Math.max(0,(h-lay.tot)/2);
   ctx.fillStyle='#000';ctx.textBaseline='top';ctx.textAlign=align;
@@ -323,7 +324,7 @@ function textBlock(ctx,it,x,y,w,h,align,noCode){
 function drawQR(ctx,text,x,y,size){
   if(!text||typeof qrcode!=='function')return;
   const q=qrcode(0,'M');q.addData(unescape(encodeURIComponent(text)));q.make();
-  const n=q.getModuleCount(),cell=Math.max(1,Math.floor(size/(n+2))),tot=cell*n;
+  const n=q.getModuleCount(),cell=Math.max(1,Math.floor(size/(n+((S.qrSize||1)>1?0:2)))),tot=cell*n;
   const ox=Math.round(x+(size-tot)/2),oy=Math.round(y+(size-tot)/2);
   ctx.fillStyle='#000';
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect(ox+c*cell,oy+r*cell,cell,cell);
@@ -363,12 +364,13 @@ function render(it,cv){
     else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
   }else{
     const L=S.layout;
-    if(L==='left'){const q=Math.min(H-2*pad,W*.55);drawQR(ctx,val,pad,(H-q)/2,q);textBlock(ctx,it,pad*2+q,pad,W-q-pad*3,H-2*pad,'left')}
-    else if(L==='top'){const q=Math.min(W-2*pad,H*.6);drawQR(ctx,val,(W-q)/2,pad,q);textBlock(ctx,it,pad,pad*1.5+q,W-2*pad,H-q-pad*2.5,'center')}
-    else if(L==='qronly'){const q=Math.min(W,H)-2*pad;drawQR(ctx,val,(W-q)/2,(H-q)/2,q)}
-    else if(L==='qr'){const th=it.code?H*.16:0,q=Math.min(W-2*pad,H-2*pad-th);drawQR(ctx,val,(W-q)/2,pad,q);
+    const qs=S.qrSize||1,mp=px(.6);
+    if(L==='qronly'){const q=Math.min((Math.min(W,H)-2*pad)*qs,Math.min(W,H)-2*mp);drawQR(ctx,val,(W-q)/2,(H-q)/2,q)}
+    else if(L==='left'){const q=Math.min(Math.min(H-2*pad,W*.55)*qs,H-2*mp,W*.75),qx=q>H-2*pad?mp:pad;drawQR(ctx,val,qx,(H-q)/2,q);textBlock(ctx,it,qx+q+pad,pad,W-q-qx-pad*2,H-2*pad,'left')}
+    else if(L==='top'){const q=Math.min(Math.min(W-2*pad,H*.6)*qs,W-2*mp,H*.85),qy=q>H*.6?mp:pad;drawQR(ctx,val,(W-q)/2,qy,q);textBlock(ctx,it,pad,qy+q+pad*.5,W-2*pad,H-q-qy-pad*1.5,'center')}
+    else if(L==='qr'){const th=it.code?H*.16:0,q=Math.min(Math.min(W-2*pad,H-2*pad-th)*qs,W-2*mp,H-2*mp-th),qy=Math.max(mp,(H-th-q)/2);drawQR(ctx,val,(W-q)/2,qy,q);
       if(it.code){let fs=th*.85;ctx.font=F(700,fs);while(fs>6&&ctx.measureText(it.code).width>W-2*pad){fs*=.92;ctx.font=F(700,fs)}
-        ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,pad+q+(th-fs)/2)}}
+        ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,qy+q+(th-fs)/2)}}
     else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
   }
   if(S.border){const lw=Math.max(1,px(.3));ctx.lineWidth=lw;ctx.strokeStyle='#000';ctx.strokeRect(lw/2+px(.5),lw/2+px(.5),W-lw-px(1),H-lw-px(1))}
@@ -408,7 +410,7 @@ function draw(){
 function syncForm(){
   const bc=view==='barcode';
   $('scale').value=S.scale;$('scaleV').textContent=Math.round(S.scale*100)+'%';
-  $('font').value=S.font;$('cur').value=S.cur;$('bcFmt').value=S.bcFmt;$('bcFmtBox').hidden=!bc;
+  $('font').value=S.font;$('cur').value=S.cur;$('bcFmt').value=S.bcFmt;$('bcFmtBox').hidden=!bc;$('qrSizeBox').hidden=bc||S.layout==='text';$('qrSize').value=S.qrSize||1;$('qrSizeV').textContent=Math.round((S.qrSize||1)*100)+'%';
   $('qrLbl').textContent=bc?'Conținut cod de bare (gol = se folosește codul)':'Conținut QR (gol = se folosește codul)';
   $('qr').placeholder=bc?'ex. 4840000123456':'ex. link spre produs sau cod';
   $('sName').checked=S.show.name;$('sCode').checked=S.show.code;$('sPrice').checked=S.show.price;$('sExtra').checked=S.show.extra;$('sBorder').checked=S.border;
@@ -425,6 +427,7 @@ const upd=()=>{list();draw();save()};
 
 $('layouts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(view==='barcode')S.bLayout=b.dataset.l;else S.layout=b.dataset.l;all()});
 $('bcFmt').addEventListener('change',e=>{S.bcFmt=e.target.value;draw();save()});
+$('qrSize').addEventListener('input',e=>{S.qrSize=+e.target.value;$('qrSizeV').textContent=Math.round(S.qrSize*100)+'%';draw();save()});
 $('scale').addEventListener('input',e=>{S.scale=+e.target.value;$('scaleV').textContent=Math.round(S.scale*100)+'%';draw();save()});
 $('font').addEventListener('change',e=>{S.font=e.target.value;draw();save()});
 $('cur').addEventListener('input',e=>{S.cur=e.target.value.trim();draw();save()});
