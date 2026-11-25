@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor etichete QR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Archivo+Narrow:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* VOICE: practic, de depozit — clar, fără decor, butoane mari pentru deget pe iPad
+   IDEA: rola de etichete termice: eticheta albă stă pe o bandă gri ca pe suportul siliconat
+   PICTURE: previzualizarea etichetei la scară, mare, sus — exact cum iese din imprimantă
+   COLOUR and TYPE: alb, negru de tuș, un singur accent albastru-cobalt; Archivo
+   LAYOUT: stânga previzualizare + export, dreapta câmpuri; dedesubt lista de produse; sub 760px totul pe o coloană */
+:root{color-scheme:light dark;--bg:light-dark(#f4f4f2,#121314);--card:light-dark(#fff,#1d1f21);--ink:light-dark(#151515,#ececea);--mut:light-dark(#66666a,#9a9ca0);--line:light-dark(#dcdcd8,#33363a);--acc:light-dark(#1f4fd6,#7c9dff);--accInk:light-dark(#fff,#0b1640);--roll:light-dark(#d9d9d4,#2a2c2f)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Archivo,system-ui,sans-serif;overflow-x:clip}
+h1{font-size:clamp(26px,4vw,36px);line-height:1.05;margin:0;font-weight:800;text-wrap:balance}
+h2{font-size:18px;margin:0 0 12px;font-weight:800}
+.band{padding:clamp(18px,3vw,36px) max(4vw,14px)}
+.wrap{max-width:1240px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between;margin-bottom:18px}
+.top p{margin:0;color:var(--mut);font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.stage{position:sticky;top:12px}
+.roll{background:var(--roll);border-radius:10px;padding:clamp(18px,4vw,40px) 12px;display:flex;justify-content:center;align-items:center;min-height:260px}
+.roll canvas{max-width:100%;max-height:52vh;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.18);image-rendering:pixelated}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;font-size:14px;color:var(--mut);margin:10px 2px 14px}
+.meta b{color:var(--ink);white-space:nowrap}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:600 15px Archivo,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.pri{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
+button.sm{min-height:36px;padding:0 10px;font-size:14px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.bt{margin:0 0 14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+button:disabled{opacity:.45;cursor:default}
+.hint{font-size:13px;color:var(--mut);margin:10px 0 0}
+.lp{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.lp img{display:block;max-width:180px;border:1px solid var(--line);border-radius:4px;margin-top:6px;background:#fff}
+label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin-bottom:4px}
+input,select,textarea{width:100%;font:16px Archivo,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 11px;min-height:44px}
+textarea{min-height:110px;font-size:15px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:12px}
+.f{margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{min-height:38px;padding:0 12px;font-size:14px}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:12px}
+.checks label{display:flex;align-items:center;gap:7px;font-size:15px;color:var(--ink);font-weight:400;margin:0;min-height:36px}
+.checks input{width:20px;height:20px;min-height:0;accent-color:var(--acc)}
+details{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center}
+.list{margin-top:20px}
+.lhead{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:10px}
+.lhead h2{margin:0}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:13px;color:var(--mut);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.sel td{background:light-dark(#eaf0ff,#1e2a4a)}
+tr{cursor:pointer}
+td.n,th.n{text-align:right;white-space:nowrap}
+td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+@media(max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.stage{position:static}}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mut)}.stack td:empty{display:none}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<div class="band"><div class="wrap">
+  <div class="top">
+    <h1>Etichete QR pentru stoc</h1>
+    <p>Modifici textul și mărimea, apoi trimiți imaginea sau PDF-ul în aplicația imprimantei.</p>
+  </div>
+
+  <div class="grid">
+    <section class="card stage" aria-label="Previzualizare">
+      <div class="roll"><canvas id="cv" aria-label="Previzualizare etichetă"></canvas></div>
+      <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Copii total: <b id="mTot"></b></span></div>
+      <div class="btns" id="dlBtns">
+        <button class="pri" id="bPng">PNG eticheta curentă</button>
+        <button id="bPdf1">PDF eticheta curentă</button>
+        <button id="bPdfAll">PDF toate (cu copii)</button>
+      </div>
+      <div class="bt" id="bt">
+        <div class="btns"><button class="pri" id="bConn">Conectează imprimanta</button><button id="bPrint1" disabled>Printează eticheta</button><button id="bPrintAll" disabled>Printează toate</button></div>
+        <p class="hint" id="btState">Print direct: deschide pagina în browserul <b>Bluefy</b> pe iPad (Safari nu permite Bluetooth).</p>
+        <div class="row" style="margin:8px 0 0">
+          <div><label for="gap">Spațiu între etichete (mm)</label><input id="gap" type="number" inputmode="decimal" min="0" max="10" step="0.5"></div>
+          <div><label for="dens">Intensitate</label><select id="dens"><option>6</option><option>8</option><option>10</option><option>12</option><option>15</option></select></div>
+          <div><label for="inv">Dacă iese negativ</label><select id="inv"><option value="0">Normal</option><option value="1">Inversează</option></select></div>
+        </div>
+      </div>
+      <p class="hint" id="dlHint">Pe iPad se deschide meniul de partajare — alege aplicația imprimantei sau „Salvează în Fișiere / Poze”.</p>
+      <div class="lp">
+        <span class="hint" style="margin:0">Alternativă: ține apăsat pe imagine → Salvează în Poze, apoi o deschizi din aplicația imprimantei.</span>
+        <img id="lpImg" alt="Eticheta ca imagine">
+      </div>
+    </section>
+
+    <section class="card" aria-label="Setări">
+      <h2>Mărimea etichetei</h2>
+      <div class="chips" id="presets"></div>
+      <div class="row">
+        <div><label for="w">Lățime (mm)</label><input id="w" type="number" inputmode="decimal" min="10" max="150" step="1"></div>
+        <div><label for="h">Înălțime (mm)</label><input id="h" type="number" inputmode="decimal" min="10" max="150" step="1"></div>
+        <div><label for="dpi">Rezoluție</label><select id="dpi"><option value="203">203 dpi</option><option value="300">300 dpi</option></select></div>
+      </div>
+
+      <h2>Produs</h2>
+      <div class="f"><label for="name">Denumire</label><input id="name" autocomplete="off"></div>
+      <div class="row">
+        <div><label for="code">Cod / SKU</label><input id="code" autocomplete="off"></div>
+        <div><label for="price">Preț</label><input id="price" inputmode="decimal" autocomplete="off"></div>
+      </div>
+      <div class="f"><label for="extra">Rând suplimentar (lot, termen, raft…)</label><input id="extra" autocomplete="off"></div>
+      <div class="f"><label for="qr">Conținut QR (gol = se folosește codul)</label><input id="qr" autocomplete="off" placeholder="ex. link spre produs sau cod"></div>
+
+      <h2>Aspect</h2>
+      <div class="chips" id="layouts"></div>
+      <div class="checks">
+        <label><input type="checkbox" id="sName">Denumire</label>
+        <label><input type="checkbox" id="sCode">Cod</label>
+        <label><input type="checkbox" id="sPrice">Preț</label>
+        <label><input type="checkbox" id="sExtra">Rând suplimentar</label>
+        <label><input type="checkbox" id="sBorder">Chenar</label>
+        <label><input type="checkbox" id="sRot">Rotește 90° la export</label>
+      </div>
+      <div class="row">
+        <div><label for="scale">Mărime text: <span id="scaleV"></span></label><input id="scale" type="range" min="0.6" max="1.6" step="0.05" style="padding:0"></div>
+        <div><label for="font">Font</label><select id="font"><option value="Archivo">Archivo</option><option value="Archivo Narrow">Archivo Narrow (îngust)</option><option value="Arial">Arial</option></select></div>
+        <div><label for="cur">Monedă</label><input id="cur" autocomplete="off"></div>
+      </div>
+      <details>
+        <summary>Importă o listă (lipește din Excel)</summary>
+        <p class="hint">Un produs pe rând: <b>Denumire; Cod; Preț; QR; Copii</b>. Merge și cu coloane copiate direct din Excel (Tab).</p>
+        <textarea id="imp" placeholder="Mănuși nitril M; MD-NIT-M; 95&#10;Compozit A2 4g; CT-NH-A2; 320"></textarea>
+        <div class="btns" style="margin-top:8px"><button id="bImpAdd">Adaugă în listă</button><button id="bImpRep">Înlocuiește lista</button></div>
+      </details>
+    </section>
+  </div>
+
+  <section class="card list" aria-label="Produse">
+    <div class="lhead">
+      <h2>Produse (<span id="cnt"></span>)</h2>
+      <div class="btns"><button class="sm" id="bAdd">+ Produs nou</button><button class="sm" id="bDup">Duplică</button><button class="sm" id="bDel">Șterge</button></div>
+    </div>
+    <table class="stack"><thead><tr><th>Denumire</th><th>Cod</th><th class="n">Preț</th><th class="n">Copii</th></tr></thead><tbody id="tb"></tbody></table>
+    <p class="hint" id="sampleNote">Produsele de mai sus sunt exemple — înlocuiește-le cu ale tale. Totul se salvează automat pe acest dispozitiv.</p>
+  </section>
+</div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const PRESETS=[[40,30],[50,30],[50,25],[40,20],[30,20],[60,40],[70,50],[100,50]];
+const LAYOUTS=[['left','QR stânga'],['top','QR sus'],['qr','Doar QR + cod'],['text','Doar text']];
+const DEF={w:50,h:30,dpi:203,layout:'left',scale:1,font:'Archivo',cur:'MDL',border:false,rot:false,show:{name:true,code:true,price:true,extra:true},
+  items:[{name:'Mănuși nitril, mărimea M (100 buc)',code:'MD-NIT-M',price:'95',extra:'Raft A2',qr:'',copies:1},
+         {name:'Compozit nanohibrid A2, seringă 4 g',code:'CT-NH-A2',price:'320',extra:'',qr:'',copies:2},
+         {name:'Pile endodontice K-File 25 mm #15–40',code:'CT-KF25',price:'145',extra:'Lot 2411',qr:'',copies:1}],sel:0,sample:true};
+let S;
+try{S=JSON.parse(localStorage.getItem('etq-v1'))}catch(e){}
+if(!S||!Array.isArray(S.items)||!S.items.length)S=structuredClone(DEF);
+S.show=Object.assign({},DEF.show,S.show||{});
+const save=()=>{try{localStorage.setItem('etq-v1',JSON.stringify(S))}catch(e){}};
+const cur=()=>S.items[Math.min(S.sel,S.items.length-1)];
+const px=mm=>Math.round(mm/25.4*S.dpi);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let tt;const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)};
+
+function wrap(ctx,text,maxW,maxLines){
+  const words=String(text).split(/\s+/).filter(Boolean),lines=[];let line='';
+  const push=w=>{ // split very long words
+    while(ctx.measureText(w).width>maxW&&w.length>1){let i=w.length;while(i>1&&ctx.measureText(w.slice(0,i)).width>maxW)i--;lines.push(w.slice(0,i));w=w.slice(i)}return w};
+  for(const w of words){const t=line?line+' '+w:w;
+    if(ctx.measureText(t).width<=maxW)line=t;else{if(line)lines.push(line);line=push(w)}}
+  if(line)lines.push(line);
+  if(lines.length>maxLines){const k=lines.slice(0,maxLines);let l=k[maxLines-1]+'…';while(l.length>1&&ctx.measureText(l).width>maxW)l=l.slice(0,-2)+'…';k[maxLines-1]=l;return{lines:k,cut:true}}
+  return{lines,cut:false};
+}
+
+function drawQR(ctx,text,x,y,size){
+  if(!text||typeof qrcode!=='function')return;
+  const q=qrcode(0,'M');q.addData(unescape(encodeURIComponent(text)));q.make();
+  const n=q.getModuleCount(),cell=Math.max(1,Math.floor(size/(n+2))),tot=cell*n;
+  const ox=Math.round(x+(size-tot)/2),oy=Math.round(y+(size-tot)/2);
+  ctx.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect(ox+c*cell,oy+r*cell,cell,cell);
+}
+
+function textBlock(ctx,it,x,y,w,h,align){
+  const parts=[];
+  if(S.show.name&&it.name)parts.push({t:it.name,r:1,b:700,ml:3});
+  if(S.show.code&&it.code)parts.push({t:it.code,r:.78,b:400,ml:1});
+  if(S.show.extra&&it.extra)parts.push({t:it.extra,r:.78,b:400,ml:1});
+  if(S.show.price&&it.price)parts.push({t:it.price+(S.cur?' '+S.cur:''),r:1.4,b:700,ml:1});
+  if(!parts.length||w<10||h<10)return;
+  let base=h/4.6*S.scale,lay;
+  for(let k=0;k<24;k++){
+    lay=[];let tot=0;
+    for(const p of parts){const fs=Math.max(6,base*p.r);ctx.font=`${p.b} ${fs}px "${S.font}",Arial,sans-serif`;
+      const wr=wrap(ctx,p.t,w,p.ml);lay.push({p,fs,lines:wr.lines});tot+=wr.lines.length*fs*1.12}
+    tot+=(lay.length-1)*base*.18;
+    if(tot<=h||base<7){lay.tot=tot;break}
+    base*=.92;
+  }
+  let cy=y+Math.max(0,(h-lay.tot)/2);
+  ctx.fillStyle='#000';ctx.textBaseline='top';ctx.textAlign=align;
+  const ax=align==='center'?x+w/2:x;
+  for(const l of lay){ctx.font=`${l.p.b} ${l.fs}px "${S.font}",Arial,sans-serif`;
+    for(const s of l.lines){ctx.fillText(s,ax,cy+l.fs*.04);cy+=l.fs*1.12}cy+=base*.18}
+}
+
+function render(it,cv){
+  const W=px(S.w),H=px(S.h),pad=px(1.5);
+  cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const qrt=it.qr||it.code||it.name;
+  if(S.layout==='left'){const q=Math.min(H-2*pad,W*.55);drawQR(ctx,qrt,pad,(H-q)/2,q);textBlock(ctx,it,pad*2+q,pad,W-q-pad*3,H-2*pad,'left')}
+  else if(S.layout==='top'){const q=Math.min(W-2*pad,H*.6);drawQR(ctx,qrt,(W-q)/2,pad,q);textBlock(ctx,it,pad,pad*1.5+q,W-2*pad,H-q-pad*2.5,'center')}
+  else if(S.layout==='qr'){const th=it.code?H*.16:0,q=Math.min(W-2*pad,H-2*pad-th);drawQR(ctx,qrt,(W-q)/2,pad,q);
+    if(it.code){let fs=th*.85;ctx.font=`700 ${fs}px "${S.font}",Arial,sans-serif`;while(fs>6&&ctx.measureText(it.code).width>W-2*pad){fs*=.92;ctx.font=`700 ${fs}px "${S.font}",Arial,sans-serif`}
+      ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,pad+q+(th-fs)/2)}}
+  else textBlock(ctx,it,pad,pad,W-2*pad,H-2*pad,'center');
+  if(S.border){const lw=Math.max(1,px(.3));ctx.lineWidth=lw;ctx.strokeStyle='#000';ctx.strokeRect(lw/2+px(.5),lw/2+px(.5),W-lw-px(1),H-lw-px(1))}
+  // pure black & white for thermal print
+  const d=ctx.getImageData(0,0,W,H),a=d.data;
+  for(let i=0;i<a.length;i+=4){const v=(a[i]*.3+a[i+1]*.59+a[i+2]*.11)<150?0:255;a[i]=a[i+1]=a[i+2]=v;a[i+3]=255}
+  ctx.putImageData(d,0,0);
+  return cv;
+}
+
+function exportCanvas(it){
+  const c=render(it,document.createElement('canvas'));
+  if(!S.rot)return c;
+  const r=document.createElement('canvas');r.width=c.height;r.height=c.width;
+  const x=r.getContext('2d');x.translate(r.width,0);x.rotate(Math.PI/2);x.drawImage(c,0,0);return r;
+}
+
+function draw(){
+  const it=cur();render(it,$('cv'));
+  $('mSize').textContent=`${S.w} × ${S.h} mm`;$('mPx').textContent=`${px(S.w)} × ${px(S.h)}`;
+  $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);
+  $('lpImg').src=exportCanvas(it).toDataURL('image/png');
+}
+
+function syncForm(){
+  $('w').value=S.w;$('h').value=S.h;$('dpi').value=S.dpi;$('scale').value=S.scale;$('scaleV').textContent=Math.round(S.scale*100)+'%';
+  $('font').value=S.font;$('cur').value=S.cur;
+  $('sName').checked=S.show.name;$('sCode').checked=S.show.code;$('sPrice').checked=S.show.price;$('sExtra').checked=S.show.extra;$('sBorder').checked=S.border;$('sRot').checked=S.rot;
+  const it=cur();for(const k of ['name','code','price','extra','qr'])$(k).value=it[k]||'';
+  $('presets').innerHTML=PRESETS.map(([w,h])=>`<button data-w="${w}" data-h="${h}" aria-pressed="${S.w==w&&S.h==h}">${w}×${h}</button>`).join('');
+  $('layouts').innerHTML=LAYOUTS.map(([k,l])=>`<button data-l="${k}" aria-pressed="${S.layout===k}">${l}</button>`).join('');
+}
+function list(){
+  $('cnt').textContent=S.items.length;$('sampleNote').hidden=!S.sample;
+  $('tb').innerHTML=S.items.map((it,i)=>`<tr data-i="${i}" class="${i===S.sel?'sel':''}"><td>${esc(it.name||'—')}</td><td>${esc(it.code)}</td><td class="n">${esc(it.price)}</td><td class="n"><input class="cp" type="number" min="0" inputmode="numeric" data-i="${i}" value="${+it.copies||0}" aria-label="Copii"></td></tr>`).join('');
+}
+const all=()=>{syncForm();list();draw();save()};
+const upd=()=>{list();draw();save()};
+
+$('presets').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.w=+b.dataset.w;S.h=+b.dataset.h;all()});
+$('layouts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.layout=b.dataset.l;all()});
+for(const k of ['w','h'])$(k).addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>=10&&v<=150){S[k]=v;draw();save();
+  for(const b of $('presets').children)b.setAttribute('aria-pressed',S.w==b.dataset.w&&S.h==b.dataset.h)}});
+$('dpi').addEventListener('change',e=>{S.dpi=+e.target.value;draw();save()});
+$('scale').addEventListener('input',e=>{S.scale=+e.target.value;$('scaleV').textContent=Math.round(S.scale*100)+'%';draw();save()});
+$('font').addEventListener('change',e=>{S.font=e.target.value;draw();save()});
+$('cur').addEventListener('input',e=>{S.cur=e.target.value.trim();draw();save()});
+const chk={sName:'name',sCode:'code',sPrice:'price',sExtra:'extra'};
+for(const id in chk)$(id).addEventListener('change',e=>{S.show[chk[id]]=e.target.checked;draw();save()});
+$('sBorder').addEventListener('change',e=>{S.border=e.target.checked;draw();save()});
+$('sRot').addEventListener('change',e=>{S.rot=e.target.checked;draw();save()});
+for(const k of ['name','code','price','extra','qr'])$(k).addEventListener('input',e=>{cur()[k]=e.target.value;S.sample=false;upd()});
+
+$('tb').addEventListener('click',e=>{if(e.target.matches('input'))return;const tr=e.target.closest('tr');if(!tr)return;S.sel=+tr.dataset.i;all()});
+$('tb').addEventListener('input',e=>{if(!e.target.matches('.cp'))return;S.items[+e.target.dataset.i].copies=Math.max(0,parseInt(e.target.value)||0);
+  $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);save()});
+$('bAdd').addEventListener('click',()=>{S.items.push({name:'',code:'',price:'',extra:'',qr:'',copies:1});S.sel=S.items.length-1;all();$('name').focus()});
+$('bDup').addEventListener('click',()=>{S.items.splice(S.sel+1,0,structuredClone(cur()));S.sel++;all()});
+$('bDel').addEventListener('click',()=>{if(S.items.length<2){Object.assign(cur(),{name:'',code:'',price:'',extra:'',qr:''})}else{S.items.splice(S.sel,1);S.sel=Math.max(0,S.sel-1)}all();toast('Produs șters')});
+
+function parse(txt){
+  return txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{const c=l.split(l.includes('\t')?'\t':';').map(x=>x.trim());
+    return{name:c[0]||'',code:c[1]||'',price:c[2]||'',qr:c[3]||'',extra:'',copies:Math.max(1,parseInt(c[4])||1)}});
+}
+function imp(replace){const rows=parse($('imp').value);if(!rows.length){toast('Lipește cel puțin un rând');return}
+  if(replace||S.sample){S.items=rows;S.sel=0}else{S.items.push(...rows);S.sel=S.items.length-rows.length}
+  S.sample=false;$('imp').value='';all();toast(`${rows.length} produse importate`)}
+$('bImpAdd').addEventListener('click',()=>imp(false));
+$('bImpRep').addEventListener('click',()=>imp(true));
+
+const fname=s=>(s||'eticheta').replace(/[^\w\-ăâîșțĂÂÎȘȚ]+/g,'_').slice(0,40);
+let DL=null;
+async function give(filename,data){
+  if(!DL){toast('Salvarea nu e disponibilă aici — ține apăsat pe imagine');return}
+  try{await DL.save({filename,data});toast('Gata')}catch(e){if(e&&e.code!=='declined')toast('Nu s-a putut salva: '+(e.message||e.code))}
+}
+function pdf(items){
+  if(!window.jspdf){toast('PDF indisponibil');return null}
+  const pw=S.rot?S.h:S.w,ph=S.rot?S.w:S.h,o=pw>ph?'landscape':'portrait';
+  const doc=new jspdf.jsPDF({unit:'mm',format:[pw,ph],orientation:o,compress:true});let first=true;
+  for(const it of items){const img=exportCanvas(it).toDataURL('image/png');
+    for(let c=0;c<(+it.copies||0);c++){if(!first)doc.addPage([pw,ph],o);doc.addImage(img,'PNG',0,0,pw,ph,undefined,'FAST');first=false}}
+  return first?null:doc.output('blob');
+}
+$('bPng').addEventListener('click',()=>{const c=exportCanvas(cur());c.toBlob(b=>give(fname(cur().code||cur().name)+'.png',b),'image/png')});
+$('bPdf1').addEventListener('click',()=>{const b=pdf([{...cur(),copies:Math.max(1,+cur().copies||1)}]);if(b)give(fname(cur().code||cur().name)+'.pdf',b)});
+$('bPdfAll').addEventListener('click',()=>{const b=pdf(S.items);if(!b){toast('Nicio copie de printat');return}give(`etichete_${S.w}x${S.h}mm.pdf`,b)});
+
+all();
+if(document.fonts)document.fonts.load('700 20px "Archivo"').then(()=>document.fonts.load('700 20px "Archivo Narrow"')).then(draw).catch(()=>{});
+// ---------- Bluetooth direct print (TSPL) ----------
+S.gap=S.gap??2;S.dens=S.dens??8;S.inv=S.inv??0;
+$('gap').value=S.gap;$('dens').value=S.dens;$('inv').value=S.inv;
+$('gap').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>=0&&v<=10){S.gap=v;save()}});
+$('dens').addEventListener('change',e=>{S.dens=+e.target.value;save()});
+$('inv').addEventListener('change',e=>{S.inv=+e.target.value;save()});
+const SVC=[0x18f0,0xff00,0xfee7,0xae30,0xae3a,0xfff0,'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2','0000ff00-0000-1000-8000-00805f9b34fb'];
+let BT=null;const bst=m=>{$('btState').textContent=m};
+const hasBT=!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
+if(!hasBT){$('bConn').disabled=true}
+async function connect(){
+  try{
+    bst('Caut imprimanta…');
+    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:SVC});
+    const gatt=await dev.gatt.connect();
+    let ch=null;
+    for(const s of await gatt.getPrimaryServices()){
+      let cs=[];try{cs=await s.getCharacteristics()}catch(e){}
+      for(const c of cs){if(c.properties.writeWithoutResponse||c.properties.write){ch=c;break}}
+      if(ch)break;
+    }
+    if(!ch)throw new Error('nu am găsit canal de scriere');
+    BT={dev,ch};dev.addEventListener('gattserverdisconnected',()=>{BT=null;$('bPrint1').disabled=$('bPrintAll').disabled=true;bst('Imprimanta s-a deconectat')});
+    $('bPrint1').disabled=$('bPrintAll').disabled=false;bst('Conectat: '+(dev.name||'imprimantă'));
+  }catch(e){bst(e&&e.name==='NotFoundError'?'Nicio imprimantă aleasă':'Conectare eșuată: '+(e.message||e))}
+}
+const enc=s=>new TextEncoder().encode(s);
+function tspl(it){
+  const c=exportCanvas(it),W=c.width,H=c.height,bpr=Math.ceil(W/8);
+  const d=c.getContext('2d').getImageData(0,0,W,H).data,bmp=new Uint8Array(bpr*H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const black=d[(y*W+x)*4]<128;const bit=S.inv?black:!black; // TSPL: 0 = punct negru
+    if(bit)bmp[y*bpr+(x>>3)]|=0x80>>(x&7)}
+  for(let x=W;x<bpr*8;x++)for(let y=0;y<H;y++)if(!S.inv)bmp[y*bpr+(x>>3)]|=0x80>>(x&7);
+  const mmW=(W/S.dpi*25.4).toFixed(1),mmH=(H/S.dpi*25.4).toFixed(1);
+  const head=enc(`SIZE ${mmW} mm,${mmH} mm\r\nGAP ${S.gap} mm,0 mm\r\nDENSITY ${S.dens}\r\nSPEED 4\r\nDIRECTION 1,0\r\nREFERENCE 0,0\r\nCLS\r\nBITMAP 0,0,${bpr},${H},0,`);
+  const tail=enc(`\r\nPRINT 1,${Math.max(1,+it.copies||1)}\r\n`);
+  const out=new Uint8Array(head.length+bmp.length+tail.length);out.set(head);out.set(bmp,head.length);out.set(tail,head.length+bmp.length);return out;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function send(bytes){
+  const ch=BT.ch,wr=ch.properties.write&&!ch.properties.writeWithoutResponse,n=wr?180:100;
+  for(let i=0;i<bytes.length;i+=n){const part=bytes.slice(i,i+n);
+    if(wr)await ch.writeValueWithResponse(part);else{await ch.writeValueWithoutResponse(part);await sleep(12)}}
+}
+async function printItems(items){
+  if(!BT){bst('Conectează întâi imprimanta');return}
+  $('bPrint1').disabled=$('bPrintAll').disabled=true;
+  try{let k=0;for(const it of items){if(!(+it.copies>0))continue;bst(`Trimit ${++k}/${items.length}…`);await send(tspl(it));await sleep(300)}bst('Trimis la imprimantă ✓')}
+  catch(e){bst('Eroare la print: '+(e.message||e))}
+  finally{if(BT)$('bPrint1').disabled=$('bPrintAll').disabled=false}
+}
+$('bConn').addEventListener('click',connect);
+$('bPrint1').addEventListener('click',()=>printItems([{...cur(),copies:Math.max(1,+cur().copies||1)}]));
+$('bPrintAll').addEventListener('click',()=>printItems(S.items));
+
+// ---------- downloads: Claude capability or plain browser ----------
+const plain=(filename,data)=>{const u=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));const a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)};
+const inClaude=window.top!==window.self;
+const noDL=()=>{if(inClaude){$('dlBtns').hidden=true;$('dlHint').hidden=true}else{DL={save:async({filename,data})=>{plain(filename,data);return{status:'saved'}}};$('dlHint').textContent='Fișierul se descarcă; pe iPad îl găsești în Fișiere → Descărcări.'}};
+let tries=0;const hook=()=>{if(!inClaude){noDL();return}if(window.claude&&claude.use){claude.use('downloads').then(d=>{DL=d;if(!d)noDL()}).catch(noDL)}else if(++tries<20)setTimeout(hook,250);else noDL()};hook();
+}
+</script>
+</body>
+</html>
