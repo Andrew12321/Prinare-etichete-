@@ -257,7 +257,7 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
 {
 const $=id=>document.getElementById(id);
 const PRESETS=[[40,30],[50,30],[50,25],[40,20],[60,40],[70,50],[100,50],[100,100],[100,150]];
-const QR_LAYOUTS=[['left','QR stânga'],['top','QR sus'],['qr','Doar QR + cod'],['text','Doar text']];
+const QR_LAYOUTS=[['left','QR stânga'],['top','QR sus'],['qr','Doar QR + cod'],['qronly','Doar QR'],['text','Doar text']];
 const BC_LAYOUTS=[['bstack','Text + cod de bare'],['bonly','Doar cod de bare'],['text','Doar text']];
 const FITS=[['contain','Încadrează'],['cover','Umple (taie)'],['stretch','Întinde']];
 const PDEF={fit:'contain',rot:'auto',zoom:1,copies:1,cT:0,cB:0,cL:0,cR:0,thr:160,dith:0};
@@ -365,6 +365,7 @@ function render(it,cv){
     const L=S.layout;
     if(L==='left'){const q=Math.min(H-2*pad,W*.55);drawQR(ctx,val,pad,(H-q)/2,q);textBlock(ctx,it,pad*2+q,pad,W-q-pad*3,H-2*pad,'left')}
     else if(L==='top'){const q=Math.min(W-2*pad,H*.6);drawQR(ctx,val,(W-q)/2,pad,q);textBlock(ctx,it,pad,pad*1.5+q,W-2*pad,H-q-pad*2.5,'center')}
+    else if(L==='qronly'){const q=Math.min(W,H)-2*pad;drawQR(ctx,val,(W-q)/2,(H-q)/2,q)}
     else if(L==='qr'){const th=it.code?H*.16:0,q=Math.min(W-2*pad,H-2*pad-th);drawQR(ctx,val,(W-q)/2,pad,q);
       if(it.code){let fs=th*.85;ctx.font=F(700,fs);while(fs>6&&ctx.measureText(it.code).width>W-2*pad){fs*=.92;ctx.font=F(700,fs)}
         ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(it.code,W/2,pad+q+(th-fs)/2)}}
