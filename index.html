@@ -142,17 +142,17 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
     <div class="grid">
       <section class="card stage" aria-label="Previzualizare">
         <div class="roll"><canvas id="cv" aria-label="Previzualizare etichetă"></canvas></div>
-        <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Copii total: <b id="mTot"></b></span></div>
+        <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Toată lista: <b id="mTot"></b></span></div>
         <p class="warn" id="lWarn" hidden></p>
         <div class="qty"><label for="qty">Câte etichete printez</label><div class="step"><button type="button" class="stp" data-t="qty" data-d="-1" aria-label="Mai puține">−</button><input id="qty" type="number" min="1" max="999" inputmode="numeric"><button type="button" class="stp" data-t="qty" data-d="1" aria-label="Mai multe">+</button><button type="button" class="stp q" data-t="qty" data-v="5">5</button><button type="button" class="stp q" data-t="qty" data-v="10">10</button><button type="button" class="stp q" data-t="qty" data-v="20">20</button><button type="button" class="stp q" data-t="qty" data-v="50">50</button></div></div>
         <div class="btns">
           <button class="pri" id="bPrint1" disabled>Printează eticheta</button>
-          <button class="pri" id="bPrintAll" disabled>Printează toate</button>
+          <button class="pri" id="bPrintAll" disabled>Printează toată lista</button>
         </div>
         <div class="btns sub dl">
           <button id="bPng">PNG eticheta curentă</button>
           <button id="bPdf1">PDF eticheta curentă</button>
-          <button id="bPdfAll">PDF toate (cu copii)</button>
+          <button id="bPdfAll">PDF toată lista</button>
         </div>
       </section>
 
@@ -408,7 +408,7 @@ document.addEventListener('input',e=>{const t=e.target;if(!t.closest('.sizebox')
   if(t.matches('.sd')){S.dpi=+t.value;syncSize();redraw();save()}});
 
 /* ---------- label editor ---------- */
-function qtyUI(){const n=Math.max(1,+cur().copies||1);$('qty').value=n;$('bPrint1').textContent=n>1?`Printează ${n} etichete`:'Printează eticheta'}
+function qtyUI(){const n=Math.max(1,+cur().copies||1),t=S.items.reduce((s,i)=>s+(+i.copies||0),0),p=S.items.filter(i=>+i.copies>0).length;$('qty').value=n;$('bPrint1').textContent=n>1?`Printează ${n} etichete`:'Printează eticheta';$('bPrintAll').textContent=`Printează toată lista (${p} produse, ${t} buc)`}
 function draw(){
   const it=cur();render(it,$('cv'));qtyUI();
   $('mSize').textContent=`${S.w} × ${S.h} mm`;$('mPx').textContent=`${px(S.w)} × ${px(S.h)}`;
