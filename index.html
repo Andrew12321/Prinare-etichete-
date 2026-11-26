@@ -84,6 +84,11 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
 .choice b{font-size:21px;line-height:1.15}
 .choice span{color:var(--mut);font-size:15px}
 .lead{color:var(--mut);margin:0;max-width:62ch}
+.qty{margin:0 0 14px}
+.step{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.step input{width:90px;text-align:center;font-weight:800;font-size:20px}
+.step .stp{min-width:48px;font-size:22px;padding:0 10px}
+.step .stp.q{font-size:15px;min-width:44px}
 .pages{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;max-height:150px;overflow:auto}
 .pages button{min-width:44px;min-height:38px;padding:0 10px;font-size:14px}
 .pages button[aria-pressed=true]{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
@@ -139,6 +144,7 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
         <div class="roll"><canvas id="cv" aria-label="Previzualizare etichetă"></canvas></div>
         <div class="meta"><span>Mărime: <b id="mSize"></b></span><span>Pixeli: <b id="mPx"></b></span><span>Copii total: <b id="mTot"></b></span></div>
         <p class="warn" id="lWarn" hidden></p>
+        <div class="qty"><label for="qty">Câte etichete printez</label><div class="step"><button type="button" class="stp" data-t="qty" data-d="-1" aria-label="Mai puține">−</button><input id="qty" type="number" min="1" max="999" inputmode="numeric"><button type="button" class="stp" data-t="qty" data-d="1" aria-label="Mai multe">+</button><button type="button" class="stp q" data-t="qty" data-v="5">5</button><button type="button" class="stp q" data-t="qty" data-v="10">10</button><button type="button" class="stp q" data-t="qty" data-v="20">20</button><button type="button" class="stp q" data-t="qty" data-v="50">50</button></div></div>
         <div class="btns">
           <button class="pri" id="bPrint1" disabled>Printează eticheta</button>
           <button class="pri" id="bPrintAll" disabled>Printează toate</button>
@@ -205,6 +211,7 @@ td input.cp{width:64px;min-height:36px;padding:4px 8px;text-align:right}
       <section class="card stage" aria-label="Previzualizare PDF">
         <div class="roll"><canvas id="pcv" aria-label="Previzualizare pagină pe etichetă" hidden></canvas><p class="empty" id="pEmpty">Alege un fișier PDF ca să-l vezi aici pe etichetă.</p></div>
         <div class="meta"><span>Etichetă: <b id="pSize"></b></span><span>Pagina: <b id="pCur">—</b></span><span>De printat: <b id="pTot">0</b></span></div>
+        <div class="qty"><label for="pQty">Câte copii din fiecare pagină</label><div class="step"><button type="button" class="stp" data-t="pQty" data-d="-1" aria-label="Mai puține">−</button><input id="pQty" type="number" min="1" max="999" inputmode="numeric"><button type="button" class="stp" data-t="pQty" data-d="1" aria-label="Mai multe">+</button><button type="button" class="stp q" data-t="pQty" data-v="5">5</button><button type="button" class="stp q" data-t="pQty" data-v="10">10</button><button type="button" class="stp q" data-t="pQty" data-v="20">20</button><button type="button" class="stp q" data-t="pQty" data-v="50">50</button></div></div>
         <div class="btns">
           <button class="pri" id="pPrint1" disabled>Printează pagina</button>
           <button class="pri" id="pPrintSel" disabled>Printează paginile alese</button>
@@ -401,8 +408,9 @@ document.addEventListener('input',e=>{const t=e.target;if(!t.closest('.sizebox')
   if(t.matches('.sd')){S.dpi=+t.value;syncSize();redraw();save()}});
 
 /* ---------- label editor ---------- */
+function qtyUI(){const n=Math.max(1,+cur().copies||1);$('qty').value=n;$('bPrint1').textContent=n>1?`Printează ${n} etichete`:'Printează eticheta'}
 function draw(){
-  const it=cur();render(it,$('cv'));
+  const it=cur();render(it,$('cv'));qtyUI();
   $('mSize').textContent=`${S.w} × ${S.h} mm`;$('mPx').textContent=`${px(S.w)} × ${px(S.h)}`;
   $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);
   $('lWarn').hidden=!bcWarn;$('lWarn').textContent=bcWarn;
@@ -437,7 +445,7 @@ $('sBorder').addEventListener('change',e=>{S.border=e.target.checked;draw();save
 for(const k of ['name','code','price','extra','qr'])$(k).addEventListener('input',e=>{cur()[k]=e.target.value;S.sample=false;upd()});
 $('tb').addEventListener('click',e=>{if(e.target.matches('input'))return;const tr=e.target.closest('tr');if(!tr)return;S.sel=+tr.dataset.i;all()});
 $('tb').addEventListener('input',e=>{if(!e.target.matches('.cp'))return;S.items[+e.target.dataset.i].copies=Math.max(0,parseInt(e.target.value)||0);
-  $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);save()});
+  $('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);qtyUI();save()});
 $('bAdd').addEventListener('click',()=>{S.items.push({name:'',code:'',price:'',extra:'',qr:'',copies:1});S.sel=S.items.length-1;all();$('name').focus()});
 $('bDup').addEventListener('click',()=>{S.items.splice(S.sel+1,0,structuredClone(cur()));S.sel++;all()});
 $('bDel').addEventListener('click',()=>{if(S.items.length<2)Object.assign(cur(),{name:'',code:'',price:'',extra:'',qr:''});else{S.items.splice(S.sel,1);S.sel=Math.max(0,S.sel-1)}all();toast('Produs șters')});
@@ -451,6 +459,14 @@ function imp(replace){const rows=parse($('imp').value);if(!rows.length){toast('L
 $('bImpAdd').addEventListener('click',()=>imp(false));
 $('bImpRep').addEventListener('click',()=>imp(true));
 
+function setQty(id,v){v=Math.max(1,Math.min(999,v|0||1));
+  if(id==='qty'){cur().copies=v;list();$('mTot').textContent=S.items.reduce((s,i)=>s+(+i.copies||0),0);qtyUI()}
+  else{S.pdf.copies=v;$('pCopies').value=v;$('pQty').value=v;pQtyUI();pPagesUI()}save()}
+function pQtyUI(){const n=S.pdf.copies;$('pPrint1').textContent=n>1?`Printează pagina × ${n}`:'Printează pagina'}
+document.addEventListener('click',e=>{const b=e.target.closest('.stp');if(!b)return;const id=b.dataset.t;
+  setQty(id,b.dataset.v?+b.dataset.v:(+$(id).value||1)+(+b.dataset.d))});
+$('qty').addEventListener('change',e=>setQty('qty',parseInt(e.target.value)));
+$('pQty').addEventListener('change',e=>setQty('pQty',parseInt(e.target.value)));
 /* ---------- PDF ---------- */
 let PDF=null,pSel=[],pIdx=0,srcCache=new Map(),pBusy=0;
 if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -459,7 +475,7 @@ function pSync(){
   $('pFit').innerHTML=FITS.map(([k,l])=>`<button data-f="${k}" aria-pressed="${P.fit===k}">${l}</button>`).join('');
   $('pRot').value=P.rot;$('pZoom').value=P.zoom;$('pZoomV').textContent=Math.round(P.zoom*100)+'%';$('pCopies').value=P.copies;
   for(const k of ['cT','cB','cL','cR']){$(k).value=P[k];$(k+'v').textContent=P[k]+'%'}
-  $('pThr').value=P.thr;$('pThrV').textContent=P.thr;$('pDith').value=P.dith;
+  $('pQty').value=P.copies;pQtyUI();$('pThr').value=P.thr;$('pThrV').textContent=P.thr;$('pDith').value=P.dith;
 }
 function pPagesUI(){
   if(!PDF)return;
@@ -528,7 +544,7 @@ pNum('pZoom','zoom','pZoomV',v=>Math.round(v*100)+'%');
 for(const k of ['cT','cB','cL','cR'])pNum(k,k,k+'v',v=>v+'%');
 pNum('pThr','thr','pThrV',v=>v);
 $('pDith').addEventListener('change',e=>{S.pdf.dith=+e.target.value;pdfDraw();save()});
-$('pCopies').addEventListener('input',e=>{S.pdf.copies=Math.max(1,Math.min(99,parseInt(e.target.value)||1));pPagesUI();save()});
+$('pCopies').addEventListener('input',e=>{S.pdf.copies=Math.max(1,Math.min(999,parseInt(e.target.value)||1));$('pQty').value=S.pdf.copies;pQtyUI();pPagesUI();save()});
 $('pReset').addEventListener('click',()=>{S.pdf={...PDEF,copies:S.pdf.copies};pSync();pdfDraw();save()});
 
 /* ---------- Bluetooth (TSPL) ---------- */
